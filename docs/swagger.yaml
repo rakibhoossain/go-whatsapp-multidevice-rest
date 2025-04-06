@@ -1,0 +1,560 @@
+info:
+  contact:
+    email: drh.dimasrestu@gmail.com
+    name: Dimas Restu Hidayanto
+    url: https://github.com/dimaskiddo
+  description: This is WhatsApp Multi-Device Implementation in Go REST API
+  title: Go WhatsApp Multi-Device REST API
+  version: 1.x
+paths:
+  /:
+    get:
+      description: Get The Server Status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      summary: Show The Status of The Server
+      tags:
+      - Root
+  /auth:
+    get:
+      description: Get Authentication Token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BasicAuth: []
+      summary: Generate Authentication Token
+      tags:
+      - Root
+  /group:
+    get:
+      description: Get Joined Groups Information from WhatsApp
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Get Joined Groups Information
+      tags:
+      - WhatsApp Group
+  /group/join:
+    post:
+      description: Joining to Group From Invitation Link from WhatsApp
+      parameters:
+      - description: Group Invitation Link
+        in: formData
+        name: link
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Join Group From Invitation Link
+      tags:
+      - WhatsApp Group
+  /group/leave:
+    post:
+      description: Leaving Group By Group ID from WhatsApp
+      parameters:
+      - description: Group ID
+        in: formData
+        name: groupid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Leave Group By Group ID
+      tags:
+      - WhatsApp Group
+  /login:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Get QR Code for WhatsApp Multi-Device Login
+      parameters:
+      - default: html
+        description: Change Output Format in HTML or JSON
+        enum:
+        - html
+        - json
+        in: formData
+        name: output
+        type: string
+      produces:
+      - application/json
+      - text/html
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Generate QR Code for WhatsApp Multi-Device Login
+      tags:
+      - WhatsApp Authentication
+  /login/pair:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Get Pairing Code for WhatsApp Multi-Device Login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Pair Phone for WhatsApp Multi-Device Login
+      tags:
+      - WhatsApp Authentication
+  /logout:
+    post:
+      description: Make Device Logout from WhatsApp Multi-Device
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Logout Device from WhatsApp Multi-Device
+      tags:
+      - WhatsApp Authentication
+  /message/delete:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Delete Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Message ID
+        in: formData
+        name: messageid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Delete Message
+      tags:
+      - WhatsApp Message
+  /message/edit:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Update Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Message ID
+        in: formData
+        name: messageid
+        required: true
+        type: string
+      - description: Text Message
+        in: formData
+        name: message
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Update Message
+      tags:
+      - WhatsApp Message
+  /message/react:
+    post:
+      consumes:
+      - multipart/form-data
+      description: React Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Message ID
+        in: formData
+        name: messageid
+        required: true
+        type: string
+      - description: Reaction Emoji
+        in: formData
+        name: emoji
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: React Message
+      tags:
+      - WhatsApp Message
+  /registered:
+    get:
+      description: Check WhatsApp Personal ID is Registered
+      parameters:
+      - description: WhatsApp Personal ID to Check
+        in: query
+        name: msisdn
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Check If WhatsApp Personal ID is Registered
+      tags:
+      - WhatsApp Information
+  /send/audio:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Audio Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Audio File
+        in: formData
+        name: audio
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Audio Message
+      tags:
+      - WhatsApp Send Message
+  /send/contact:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Contact Message to Spesific WhatsApp Personal ID or Group
+        ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Contact Name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Contact Phone
+        in: formData
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Contact Message
+      tags:
+      - WhatsApp Send Message
+  /send/document:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Document Message to Spesific WhatsApp Personal ID or Group
+        ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Document File
+        in: formData
+        name: document
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Document Message
+      tags:
+      - WhatsApp Send Message
+  /send/image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Image Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Caption Image Message
+        in: formData
+        name: caption
+        required: true
+        type: string
+      - description: Image File
+        in: formData
+        name: image
+        required: true
+        type: file
+      - default: false
+        description: Is View Once
+        in: formData
+        name: viewonce
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Image Message
+      tags:
+      - WhatsApp Send Message
+  /send/link:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Link Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Link Caption
+        in: formData
+        name: caption
+        type: string
+      - description: Link URL
+        in: formData
+        name: url
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Link Message
+      tags:
+      - WhatsApp Send Message
+  /send/location:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Location Message to Spesific WhatsApp Personal ID or Group
+        ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Location Latitude
+        in: formData
+        name: latitude
+        required: true
+        type: number
+      - description: Location Longitude
+        in: formData
+        name: longitude
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Location Message
+      tags:
+      - WhatsApp Send Message
+  /send/poll:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Poll to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Poll Question
+        in: formData
+        name: question
+        required: true
+        type: string
+      - description: Poll Options (Comma Seperated for New Options)
+        in: formData
+        name: options
+        required: true
+        type: string
+      - default: false
+        description: Is Multiple Answer
+        in: formData
+        name: multianswer
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Poll
+      tags:
+      - WhatsApp Send Message
+  /send/sticker:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Sticker Message to Spesific WhatsApp Personal ID or Group
+        ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Sticker File
+        in: formData
+        name: sticker
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Sticker Message
+      tags:
+      - WhatsApp Send Message
+  /send/text:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Text Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Text Message
+        in: formData
+        name: message
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Text Message
+      tags:
+      - WhatsApp Send Message
+  /send/video:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send Video Message to Spesific WhatsApp Personal ID or Group ID
+      parameters:
+      - description: Destination WhatsApp Personal ID or Group ID
+        in: formData
+        name: msisdn
+        required: true
+        type: string
+      - description: Caption Video Message
+        in: formData
+        name: caption
+        required: true
+        type: string
+      - description: Video File
+        in: formData
+        name: video
+        required: true
+        type: file
+      - default: false
+        description: Is View Once
+        in: formData
+        name: viewonce
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Send Video Message
+      tags:
+      - WhatsApp Send Message
+securityDefinitions:
+  BasicAuth:
+    type: basic
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
