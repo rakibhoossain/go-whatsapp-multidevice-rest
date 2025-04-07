@@ -1,4 +1,4 @@
-module github.com/dimaskiddo/go-whatsapp-multidevice-rest
+module github.com/rakibhoossain/go-whatsapp-multidevice-rest
 
 go 1.22.0
 

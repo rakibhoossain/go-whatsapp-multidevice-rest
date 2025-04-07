@@ -3,7 +3,7 @@ package index
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/router"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 )
 
 // Index

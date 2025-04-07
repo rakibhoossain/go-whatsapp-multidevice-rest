@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: 'dimaskiddo/go-whatsapp-multidevice-rest:latest'
+    image: 'rakibhoossain/go-whatsapp-multidevice-rest:latest'
     container_name: 'go-whatsapp-multidevice-rest'
     networks:
       - whatsapp

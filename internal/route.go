@@ -2,14 +2,14 @@ package internal
 
 import (
 	"github.com/labstack/echo/v4"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/docs"
 	eSwagger "github.com/swaggo/echo-swagger"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/docs"
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/auth"
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/router"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/auth"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 
-	ctlIndex "github.com/dimaskiddo/go-whatsapp-multidevice-rest/internal/index"
-	ctlWhatsApp "github.com/dimaskiddo/go-whatsapp-multidevice-rest/internal/whatsapp"
+	ctlIndex "github.com/rakibhoossain/go-whatsapp-multidevice-rest/internal/index"
+	ctlWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/internal/whatsapp"
 )
 
 func Routes(e *echo.Echo) {

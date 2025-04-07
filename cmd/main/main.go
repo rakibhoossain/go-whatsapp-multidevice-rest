@@ -4,13 +4,7 @@ package main
 // @version 1.x
 // @description This is WhatsApp Multi-Device Implementation in Go REST API
 
-// @contact.name Dimas Restu Hidayanto
-// @contact.url https://github.com/dimaskiddo
-// @contact.email drh.dimasrestu@gmail.com
-
 // @securityDefinitions.basic BasicAuth
-
-// @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
 
@@ -30,11 +24,11 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/env"
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/log"
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/router"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/env"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/log"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/internal"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/internal"
 )
 
 type Server struct {

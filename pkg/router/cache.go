@@ -8,7 +8,7 @@ import (
 	cache "github.com/SporkHubr/echo-http-cache"
 	"github.com/SporkHubr/echo-http-cache/adapter/memory"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/log"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/log"
 )
 
 func HttpCacheInMemory(cap int, ttl int) echo.MiddlewareFunc {

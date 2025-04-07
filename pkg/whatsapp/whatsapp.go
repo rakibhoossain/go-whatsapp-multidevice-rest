@@ -22,8 +22,8 @@ import (
 	qrCode "github.com/skip2/go-qrcode"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/env"
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/log"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/env"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/log"
 	"go.mau.fi/whatsmeow"
 	wabin "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/proto/waCommon"
@@ -65,7 +65,7 @@ func init() {
 		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
 	}
 
-	err = initDB(dbType)
+	err = initDB()
 	if err != nil {
 		return
 	}
@@ -1400,7 +1400,7 @@ func WhatsAppGroupLeave(jid string, gjid string) error {
 	return errors.New("WhatsApp Client is not Valid")
 }
 
-func initDB(dbType string) error {
+func initDB() error {
 	var err error
 	_, err = Db.Exec(`
 		CREATE TABLE IF NOT EXISTS whatsmeow_device_client_pivot (
@@ -1427,7 +1427,7 @@ func saveUUID(jid types.JID, token string) error {
 		token = excluded.token,
     	updated_at = excluded.updated_at;
 		`,
-		jid.User, token, time.Now(),
+		WhatsAppDecomposeJID(jid.User), token, time.Now(),
 	)
 	return err
 }

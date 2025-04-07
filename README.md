@@ -41,7 +41,7 @@ Optional packages:
 docker run -d \
   -p 3000:3000 \
   --name go-whatsapp-multidevice \
-  --rm dimaskiddo/go-whatsapp-multidevice-rest:latest
+  --rm rakibhoossain/go-whatsapp-multidevice-rest:latest
 ```
 
 3) Now it should be accessible in your machine by accessing `localhost:3000/api/v1/whatsapp` or `127.0.0.1:3000/api/v1/whatsapp`
@@ -50,7 +50,7 @@ docker run -d \
 
 #### **Using Pre-Build Binaries**
 
-1) Download Pre-Build Binaries from the [release page](https://github.com/dimaskiddo/go-whatsapp-multidevice-rest/releases)
+1) Download Pre-Build Binaries from the [release page](https://github.com/rakibhoossain/go-whatsapp-multidevice-rest/releases)
 
 2) Extract the zipped file
 
@@ -83,13 +83,13 @@ export GOPATH=$GOPATH:"`pwd`"
 
 2) Under the Go Workspace directory create a source directory
 ```sh
-mkdir -p src/github.com/dimaskiddo/go-whatsapp-multidevice-rest
+mkdir -p src/github.com/rakibhoossain/go-whatsapp-multidevice-rest
 ```
 
 3) Move to the created directory and pull codebase
 ```sh
-cd src/github.com/dimaskiddo/go-whatsapp-multidevice-rest
-git clone -b master https://github.com/dimaskiddo/go-whatsapp-multidevice-rest.git .
+cd src/github.com/rakibhoossain/go-whatsapp-multidevice-rest
+git clone -b master https://github.com/rakibhoossain/go-whatsapp-multidevice-rest.git .
 ```
 
 4) Run following command to pull vendor packages
@@ -143,17 +143,17 @@ Currently the test is not ready yet :)
 
 ## Authors
 
-* **Dimas Restu Hidayanto** - *Initial Work* - [DimasKiddo](https://github.com/dimaskiddo)
+* **Rakib Hossain** - *Initial Work* - [Rakib Hossain](https://github.com/rakibhoossain)
 
-See also the list of [contributors](https://github.com/dimaskiddo/go-whatsapp-multidevice-rest/contributors) who participated in this project
+See also the list of [contributors](https://github.com/rakibhoossain/go-whatsapp-multidevice-rest/contributors) who participated in this project
 
 ## Annotation
 
-You can seek more information for the make command parameters in the [Makefile](https://github.com/dimaskiddo/go-whatsapp-multidevice-rest/-/raw/master/Makefile)
+You can seek more information for the make command parameters in the [Makefile](https://github.com/rakibhoossain/go-whatsapp-multidevice-rest/-/raw/master/Makefile)
 
 ## License
 
-Copyright (C) 2022 Dimas Restu Hidayanto
+Copyright (C) 2025 Rakib Hossain
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

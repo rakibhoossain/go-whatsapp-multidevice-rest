@@ -3,7 +3,7 @@ SERVICE_NAME       := go-whatsapp-multidevice-rest
 SERVICE_PORT       := 3000
 IMAGE_NAME         := go-whatsapp-multidevice-rest
 IMAGE_TAG          := latest
-REBASE_URL         := "github.com/dimaskiddo/go-whatsapp-multidevice-rest"
+REBASE_URL         := "github.com/rakibhoossain/go-whatsapp-multidevice-rest"
 COMMIT_MSG         := "update improvement"
 
 .PHONY:
@@ -70,7 +70,7 @@ commit:
 
 rebase:
 	rm -rf .git
-	find . -type f -iname "*.go*" -exec sed -i '' -e "s%github.com/dimaskiddo/go-whatsapp-multidevice-rest%$(REBASE_URL)%g" {} \;
+	find . -type f -iname "*.go*" -exec sed -i '' -e "s%github.com/rakibhoossain/go-whatsapp-multidevice-rest%$(REBASE_URL)%g" {} \;
 	git init
 	git remote add origin https://$(REBASE_URL).git
 

@@ -11,9 +11,9 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "name": "Dimas Restu Hidayanto",
-            "url": "https://github.com/dimaskiddo",
-            "email": "drh.dimasrestu@gmail.com"
+            "name": "Rakib Hossain",
+            "url": "https://github.com/rakibhoossain",
+            "email": "rakibhoossain@gmail.com"
         },
         "version": "{{.Version}}"
     },
@@ -63,7 +63,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Get Joined Groups Information from WhatsApp",
@@ -85,7 +85,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Joining to Group From Invitation Link from WhatsApp",
@@ -116,7 +116,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Leaving Group By Group ID from WhatsApp",
@@ -147,7 +147,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Get QR Code for WhatsApp Multi-Device Login",
@@ -186,7 +186,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Get Pairing Code for WhatsApp Multi-Device Login",
@@ -211,7 +211,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Make Device Logout from WhatsApp Multi-Device",
@@ -233,7 +233,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Delete Message to Spesific WhatsApp Personal ID or Group ID",
@@ -274,7 +274,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Update Message to Spesific WhatsApp Personal ID or Group ID",
@@ -322,7 +322,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "React Message to Spesific WhatsApp Personal ID or Group ID",
@@ -370,7 +370,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Check WhatsApp Personal ID is Registered",
@@ -401,7 +401,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Audio Message to Spesific WhatsApp Personal ID or Group ID",
@@ -442,7 +442,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Contact Message to Spesific WhatsApp Personal ID or Group ID",
@@ -490,7 +490,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Document Message to Spesific WhatsApp Personal ID or Group ID",
@@ -531,7 +531,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Image Message to Spesific WhatsApp Personal ID or Group ID",
@@ -586,7 +586,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Link Message to Spesific WhatsApp Personal ID or Group ID",
@@ -633,7 +633,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Location Message to Spesific WhatsApp Personal ID or Group ID",
@@ -681,7 +681,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Poll to Spesific WhatsApp Personal ID or Group ID",
@@ -736,7 +736,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Sticker Message to Spesific WhatsApp Personal ID or Group ID",
@@ -777,7 +777,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Text Message to Spesific WhatsApp Personal ID or Group ID",
@@ -818,7 +818,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Send Video Message to Spesific WhatsApp Personal ID or Group ID",
@@ -874,7 +874,7 @@ const docTemplate = `{
         "BasicAuth": {
             "type": "basic"
         },
-        "BearerAuth": {
+        "BasicAuth": {
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

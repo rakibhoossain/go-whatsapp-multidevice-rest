@@ -1,8 +1,8 @@
 info:
   contact:
-    email: drh.dimasrestu@gmail.com
-    name: Dimas Restu Hidayanto
-    url: https://github.com/dimaskiddo
+    email: rakibhoossain@gmail.com
+    name: Rakib Hossain
+    url: https://github.com/rakibhoossain
   description: This is WhatsApp Multi-Device Implementation in Go REST API
   title: Go WhatsApp Multi-Device REST API
   version: 1.x
@@ -40,7 +40,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Get Joined Groups Information
       tags:
       - WhatsApp Group
@@ -59,7 +59,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Join Group From Invitation Link
       tags:
       - WhatsApp Group
@@ -78,7 +78,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Leave Group By Group ID
       tags:
       - WhatsApp Group
@@ -103,7 +103,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Generate QR Code for WhatsApp Multi-Device Login
       tags:
       - WhatsApp Authentication
@@ -118,7 +118,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Pair Phone for WhatsApp Multi-Device Login
       tags:
       - WhatsApp Authentication
@@ -131,7 +131,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Logout Device from WhatsApp Multi-Device
       tags:
       - WhatsApp Authentication
@@ -157,7 +157,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Delete Message
       tags:
       - WhatsApp Message
@@ -188,7 +188,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Update Message
       tags:
       - WhatsApp Message
@@ -219,7 +219,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: React Message
       tags:
       - WhatsApp Message
@@ -238,7 +238,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Check If WhatsApp Personal ID is Registered
       tags:
       - WhatsApp Information
@@ -264,7 +264,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Audio Message
       tags:
       - WhatsApp Send Message
@@ -296,7 +296,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Contact Message
       tags:
       - WhatsApp Send Message
@@ -323,7 +323,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Document Message
       tags:
       - WhatsApp Send Message
@@ -359,7 +359,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Image Message
       tags:
       - WhatsApp Send Message
@@ -389,7 +389,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Link Message
       tags:
       - WhatsApp Send Message
@@ -421,7 +421,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Location Message
       tags:
       - WhatsApp Send Message
@@ -457,7 +457,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Poll
       tags:
       - WhatsApp Send Message
@@ -484,7 +484,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Sticker Message
       tags:
       - WhatsApp Send Message
@@ -510,7 +510,7 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Text Message
       tags:
       - WhatsApp Send Message
@@ -546,15 +546,11 @@ paths:
         "200":
           description: ""
       security:
-      - BearerAuth: []
+      - BasicAuth: []
       summary: Send Video Message
       tags:
       - WhatsApp Send Message
 securityDefinitions:
   BasicAuth:
     type: basic
-  BearerAuth:
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"

@@ -12,8 +12,8 @@ RUN go mod download \
 
 # Final Image
 # ---------------------------------------------------
-FROM dimaskiddo/alpine:base-glibc
-MAINTAINER Dimas Restu Hidayanto <dimas.restu@student.upi.edu>
+FROM rakibhoossain/alpine:base-glibc
+MAINTAINER Rakib Hossain <rakibhoossain@gmail.com>
 
 ARG SERVICE_NAME="go-whatsapp-multidevice-rest"
 

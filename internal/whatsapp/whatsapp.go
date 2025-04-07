@@ -2,26 +2,28 @@ package whatsapp
 
 import (
 	"bytes"
+	"encoding/json"
+	"github.com/labstack/echo/v4"
 	"io"
 	"mime/multipart"
 	"strconv"
 	"strings"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/labstack/echo/v4"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
+	pkgWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/whatsapp"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/router"
-	pkgWhatsApp "github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/whatsapp"
-
-	typAuth "github.com/dimaskiddo/go-whatsapp-multidevice-rest/internal/auth/types"
-	typWhatsApp "github.com/dimaskiddo/go-whatsapp-multidevice-rest/internal/whatsapp/types"
+	typAuth "github.com/rakibhoossain/go-whatsapp-multidevice-rest/internal/auth/types"
+	typWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/internal/whatsapp/types"
 )
 
-func jwtPayload(c echo.Context) typAuth.AuthJWTClaimsPayload {
-	jwtToken := c.Get("user").(*jwt.Token)
-	jwtClaims := jwtToken.Claims.(*typAuth.AuthJWTClaims)
+func authPayload(c echo.Context) typAuth.AuthBasicPayload {
+	var reqAuthBasicInfo typAuth.RequestAuthBasicInfo
 
-	return jwtClaims.Data
+	// Parse Basic Auth Information from Rewrited Body Request
+	// By Basic Auth Middleware
+	_ = json.NewDecoder(c.Request().Body).Decode(&reqAuthBasicInfo)
+
+	return typAuth.AuthBasicPayload{JID: reqAuthBasicInfo.Username, TOKEN: reqAuthBasicInfo.Username}
 }
 
 func convertFileToBytes(file multipart.File) ([]byte, error) {
@@ -46,11 +48,11 @@ func convertFileToBytes(file multipart.File) ([]byte, error) {
 // @Produce     html
 // @Param       output    formData  string  false  "Change Output Format in HTML or JSON"  Enums(html, json)  default(html)
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /login [post]
 func Login(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqLogin typWhatsApp.RequestLogin
 	reqLogin.Output = strings.TrimSpace(c.FormValue("output"))
@@ -108,11 +110,11 @@ func Login(c echo.Context) error {
 // @Accept      multipart/form-data
 // @Produce     json
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /login/pair [post]
 func LoginPair(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	// Initialize WhatsApp Client
 	pkgWhatsApp.WhatsAppInitClient(nil, jid)
@@ -142,11 +144,11 @@ func LoginPair(c echo.Context) error {
 // @Tags        WhatsApp Authentication
 // @Produce     json
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /logout [post]
 func Logout(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	err = pkgWhatsApp.WhatsAppLogout(jid)
 	if err != nil {
@@ -163,10 +165,10 @@ func Logout(c echo.Context) error {
 // @Produce     json
 // @Param       msisdn    query  string  true  "WhatsApp Personal ID to Check"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /registered [get]
 func Registered(c echo.Context) error {
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 	remoteJID := strings.TrimSpace(c.QueryParam("msisdn"))
 
 	if len(remoteJID) == 0 {
@@ -187,11 +189,11 @@ func Registered(c echo.Context) error {
 // @Tags        WhatsApp Group
 // @Produce     json
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /group [get]
 func GetGroup(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	group, err := pkgWhatsApp.WhatsAppGroupGet(jid)
 	if err != nil {
@@ -208,11 +210,11 @@ func GetGroup(c echo.Context) error {
 // @Produce     json
 // @Param       link    formData  string  true  "Group Invitation Link"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /group/join [post]
 func JoinGroup(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqGroupJoin typWhatsApp.RequestGroupJoin
 	reqGroupJoin.Link = strings.TrimSpace(c.FormValue("link"))
@@ -236,11 +238,11 @@ func JoinGroup(c echo.Context) error {
 // @Produce     json
 // @Param       groupid    formData  string  true  "Group ID"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /group/leave [post]
 func LeaveGroup(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqGroupLeave typWhatsApp.RequestGroupLeave
 	reqGroupLeave.GID = strings.TrimSpace(c.FormValue("groupid"))
@@ -266,11 +268,11 @@ func LeaveGroup(c echo.Context) error {
 // @Param       msisdn    formData  string  true  "Destination WhatsApp Personal ID or Group ID"
 // @Param       message   formData  string  true  "Text Message"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/text [post]
 func SendText(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqSendMessage typWhatsApp.RequestSendMessage
 	reqSendMessage.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -303,11 +305,11 @@ func SendText(c echo.Context) error {
 // @Param       latitude  formData  number  true  "Location Latitude"
 // @Param       longitude formData  number  true  "Location Longitude"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/location [post]
 func SendLocation(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqSendLocation typWhatsApp.RequestSendLocation
 	reqSendLocation.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -345,11 +347,11 @@ func SendLocation(c echo.Context) error {
 // @Param       name      formData  string  true  "Contact Name"
 // @Param       phone     formData  string  true  "Contact Phone"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/contact [post]
 func SendContact(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqSendContact typWhatsApp.RequestSendContact
 	reqSendContact.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -387,11 +389,11 @@ func SendContact(c echo.Context) error {
 // @Param       caption   formData  string  false "Link Caption"
 // @Param       url       formData  string  true  "Link URL"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/link [post]
 func SendLink(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqSendLink typWhatsApp.RequestSendLink
 	reqSendLink.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -424,7 +426,7 @@ func SendLink(c echo.Context) error {
 // @Param       msisdn    formData  string  true  "Destination WhatsApp Personal ID or Group ID"
 // @Param       document  formData  file    true  "Document File"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/document [post]
 func SendDocument(c echo.Context) error {
 	return sendMedia(c, "document")
@@ -441,7 +443,7 @@ func SendDocument(c echo.Context) error {
 // @Param       image     formData  file    true  "Image File"
 // @Param       viewonce  formData  bool    false "Is View Once"              default(false)
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/image [post]
 func SendImage(c echo.Context) error {
 	return sendMedia(c, "image")
@@ -456,7 +458,7 @@ func SendImage(c echo.Context) error {
 // @Param       msisdn    formData  string  true  "Destination WhatsApp Personal ID or Group ID"
 // @Param       audio     formData  file    true  "Audio File"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/audio [post]
 func SendAudio(c echo.Context) error {
 	return sendMedia(c, "audio")
@@ -473,7 +475,7 @@ func SendAudio(c echo.Context) error {
 // @Param       video     formData  file    true  "Video File"
 // @Param       viewonce  formData  bool    false "Is View Once"              default(false)
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/video [post]
 func SendVideo(c echo.Context) error {
 	return sendMedia(c, "video")
@@ -488,7 +490,7 @@ func SendVideo(c echo.Context) error {
 // @Param       msisdn    formData  string  true  "Destination WhatsApp Personal ID or Group ID"
 // @Param       sticker   formData  file    true  "Sticker File"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/sticker [post]
 func SendSticker(c echo.Context) error {
 	return sendMedia(c, "sticker")
@@ -496,7 +498,7 @@ func SendSticker(c echo.Context) error {
 
 func sendMedia(c echo.Context, mediaType string) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqSendMessage typWhatsApp.RequestSendMessage
 	reqSendMessage.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -608,11 +610,11 @@ func sendMedia(c echo.Context, mediaType string) error {
 // @Param       options      formData  string  true  "Poll Options (Comma Seperated for New Options)"
 // @Param       multianswer  formData  bool    false "Is Multiple Answer"             default(false)
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /send/poll [post]
 func SendPoll(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqSendPoll typWhatsApp.RequestSendPoll
 	reqSendPoll.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -669,11 +671,11 @@ func SendPoll(c echo.Context) error {
 // @Param       messageid formData  string  true  "Message ID"
 // @Param       message   formData  string  true  "Text Message"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /message/edit [post]
 func MessageEdit(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqMessageUpdate typWhatsApp.RequestMessage
 	reqMessageUpdate.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -711,11 +713,11 @@ func MessageEdit(c echo.Context) error {
 // @Param       messageid formData  string  true  "Message ID"
 // @Param       emoji     formData  string  true  "Reaction Emoji"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /message/react [post]
 func MessageReact(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqMessageUpdate typWhatsApp.RequestMessage
 	reqMessageUpdate.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -752,11 +754,11 @@ func MessageReact(c echo.Context) error {
 // @Param       msisdn    formData  string  true  "Destination WhatsApp Personal ID or Group ID"
 // @Param       messageid formData  string  true  "Message ID"
 // @Success     200
-// @Security    BearerAuth
+// @Security    BasicAuth
 // @Router      /message/delete [post]
 func MessageDelete(c echo.Context) error {
 	var err error
-	jid := jwtPayload(c).JID
+	jid := authPayload(c).JID
 
 	var reqMessageUpdate typWhatsApp.RequestMessage
 	reqMessageUpdate.RJID = strings.TrimSpace(c.FormValue("msisdn"))
