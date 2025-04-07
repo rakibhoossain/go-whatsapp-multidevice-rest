@@ -500,21 +500,6 @@ func WhatsAppCheckRegistered(jid string, id string) error {
 }
 
 func WhatsAppSendText(ctx context.Context, jid string, rjid string, message string) (string, error) {
-
-	fmt.Println(WhatsAppClient)
-	fmt.Printf("JID %s, RJID: %s\n ", jid, rjid)
-	fmt.Println(jid)
-
-	firstKey := ""
-
-	for key := range WhatsAppClient {
-		firstKey = key
-		break // Exit the loop after the first key is found
-	}
-
-	jid = firstKey
-	fmt.Printf("firstKey %s \n", firstKey)
-
 	if WhatsAppClient[jid] != nil {
 		var err error
 

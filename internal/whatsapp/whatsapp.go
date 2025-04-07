@@ -2,7 +2,6 @@ package whatsapp
 
 import (
 	"bytes"
-	"encoding/json"
 	"github.com/labstack/echo/v4"
 	"io"
 	"mime/multipart"
@@ -17,13 +16,20 @@ import (
 )
 
 func authPayload(c echo.Context) typAuth.AuthBasicPayload {
-	var reqAuthBasicInfo typAuth.RequestAuthBasicInfo
 
-	// Parse Basic Auth Information from Rewrited Body Request
-	// By Basic Auth Middleware
-	_ = json.NewDecoder(c.Request().Body).Decode(&reqAuthBasicInfo)
+	// Get the raw value from context
+	jidValue := c.Get("JID")
+	if jidValue == nil {
 
-	return typAuth.AuthBasicPayload{JID: reqAuthBasicInfo.Username, TOKEN: reqAuthBasicInfo.Username}
+	}
+
+	// Type assertion with check
+	jid, ok := c.Get("JID").(string)
+	if ok {
+		return typAuth.AuthBasicPayload{JID: jid, TOKEN: jid}
+	}
+
+	return typAuth.AuthBasicPayload{JID: "", TOKEN: ""}
 }
 
 func convertFileToBytes(file multipart.File) ([]byte, error) {
@@ -261,7 +267,7 @@ func LeaveGroup(c echo.Context) error {
 
 // SendText
 // @Summary     Send Text Message
-// @Description Send Text Message to Spesific WhatsApp Personal ID or Group ID
+// @Description Send Text Message to Specific WhatsApp Personal ID or Group ID
 // @Tags        WhatsApp Send Message
 // @Accept      multipart/form-data
 // @Produce     json
@@ -272,6 +278,7 @@ func LeaveGroup(c echo.Context) error {
 // @Router      /send/text [post]
 func SendText(c echo.Context) error {
 	var err error
+
 	jid := authPayload(c).JID
 
 	var reqSendMessage typWhatsApp.RequestSendMessage

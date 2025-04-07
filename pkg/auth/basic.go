@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/base64"
-	"io/ioutil"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -10,7 +9,7 @@ import (
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 )
 
-// BasicAuth Function as Midleware for Basic Authorization
+// BasicAuth Function as Middleware for Basic Authorization
 func BasicAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -45,12 +44,8 @@ func BasicAuth() echo.MiddlewareFunc {
 				return router.ResponseBadRequest(c, "Invalid Authentication")
 			}
 
-			// Make Credentials to JSON Format
-			authInformation := `{"username": "` + authCredentials[0] + `"}`
-
-			// Rewrite Body Content With Credentials in JSON Format
-			c.Request().Header.Set("Content-Type", "application/json")
-			c.Request().Body = ioutil.NopCloser(strings.NewReader(authInformation))
+			// Store the username in the context instead of modifying the body
+			c.Set("JID", authCredentials[0])
 
 			// Call Next Handler Function With Current Request
 			return next(c)
