@@ -36,7 +36,7 @@ import (
 
 var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient = make(map[string]*whatsmeow.Client)
-var db *sql.DB
+var Db *sql.DB
 
 var (
 	WhatsAppClientProxyURL string
@@ -60,7 +60,7 @@ func init() {
 		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
 	}
 
-	db, err = sql.Open(dbType, dbURI)
+	Db, err = sql.Open(dbType, dbURI)
 	if err != nil {
 		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
 	}
@@ -1402,7 +1402,7 @@ func WhatsAppGroupLeave(jid string, gjid string) error {
 
 func initDB(dbType string) error {
 	var err error
-	_, err = db.Exec(`
+	_, err = Db.Exec(`
 		CREATE TABLE IF NOT EXISTS whatsmeow_device_client_pivot (
 		  id INTEGER PRIMARY KEY AUTOINCREMENT,
 		  jid TEXT NOT NULL,
@@ -1420,7 +1420,7 @@ func initDB(dbType string) error {
 }
 
 func saveUUID(jid types.JID, token string) error {
-	_, err := db.Exec(`
+	_, err := Db.Exec(`
 		INSERT INTO whatsmeow_device_client_pivot (jid, token, updated_at)
 		VALUES (?, ?, ?)
 		ON CONFLICT(token) DO UPDATE SET 
@@ -1433,7 +1433,7 @@ func saveUUID(jid types.JID, token string) error {
 }
 
 func removeByUUID(token string) error {
-	_, err := db.Exec(`
+	_, err := Db.Exec(`
   DELETE FROM whatsmeow_device_client_pivot
   WHERE token = ?
 `, token)
