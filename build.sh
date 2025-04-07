@@ -7,9 +7,9 @@ BUILD_CGO_ENABLED="${BUILD_CGO_ENABLED:-0}" # Default CGO disabled if not set
 # Define target platforms (OS/ARCH/extension)
 TARGETS=(
     "linux/amd64/"
-    "windows/amd64/.exe"
-    "darwin/amd64/"
-    "darwin/arm64/"
+#    "windows/amd64/.exe"
+#    "darwin/amd64/"
+#    "darwin/arm64/"
 )
 
 # Ensure vendor directory is up-to-date

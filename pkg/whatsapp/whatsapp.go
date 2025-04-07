@@ -3,9 +3,11 @@ package whatsapp
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"go.mau.fi/whatsmeow/types/events"
 	"net/http"
 	"runtime"
 	"strings"
@@ -20,6 +22,8 @@ import (
 	qrCode "github.com/skip2/go-qrcode"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/env"
+	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/log"
 	"go.mau.fi/whatsmeow"
 	wabin "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/proto/waCommon"
@@ -28,13 +32,11 @@ import (
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
-
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/env"
-	"github.com/dimaskiddo/go-whatsapp-multidevice-rest/pkg/log"
 )
 
 var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient = make(map[string]*whatsmeow.Client)
+var db *sql.DB
 
 var (
 	WhatsAppClientProxyURL string
@@ -56,6 +58,16 @@ func init() {
 	datastore, err := sqlstore.New(dbType, dbURI, nil)
 	if err != nil {
 		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
+	}
+
+	db, err = sql.Open(dbType, dbURI)
+	if err != nil {
+		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
+	}
+
+	err = initDB(dbType)
+	if err != nil {
+		return
 	}
 
 	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
@@ -95,6 +107,7 @@ func WhatsAppInitClient(device *store.Device, jid string) {
 		// Initialize New WhatsApp Client
 		// And Save it to The Map
 		WhatsAppClient[jid] = whatsmeow.NewClient(device, nil)
+		WhatsAppClient[jid].AddEventHandler(createEventHandler(jid))
 
 		// Set WhatsApp Client Proxy Address if Proxy URL is Provided
 		if len(WhatsAppClientProxyURL) > 0 {
@@ -107,6 +120,35 @@ func WhatsAppInitClient(device *store.Device, jid string) {
 		// Set WhatsApp Client Auto Trust Identity
 		WhatsAppClient[jid].AutoTrustIdentity = true
 	}
+}
+
+func createEventHandler(jid string) func(interface{}) {
+	return func(evt interface{}) {
+		switch v := evt.(type) {
+		case *events.PairSuccess:
+			handlePairedEvent(jid, v)
+		case *events.LoggedOut:
+			handleLoggedOutEvent(jid)
+		}
+	}
+}
+
+func handlePairedEvent(jid string, evt *events.PairSuccess) {
+	err := saveUUID(evt.ID, jid)
+	if err != nil {
+		fmt.Printf("connected: JID store failed JID: %s, UUID: %s", evt.ID, jid, evt.ID.User)
+		return
+	}
+	fmt.Printf("connected: JID: %s, UUID: %s", evt.ID, jid, evt.ID.User)
+}
+
+func handleLoggedOutEvent(jid string) {
+	err := removeByUUID(jid)
+	if err != nil {
+		fmt.Printf("logout failed UUID: %s", jid)
+		return
+	}
+	fmt.Printf("logout UUID: %s", jid)
 }
 
 func WhatsAppGetUserAgent(agentType string) waCompanionReg.DeviceProps_PlatformType {
@@ -163,7 +205,7 @@ func WhatsAppGetUserOS() string {
 	}
 }
 
-func WhatsAppGenerateQR(qrChan <-chan whatsmeow.QRChannelItem) (string, int) {
+func WhatsAppGenerateQR(qrChan <-chan whatsmeow.QRChannelItem, jid string) (string, int) {
 	qrChanCode := make(chan string)
 	qrChanTimeout := make(chan int)
 
@@ -202,7 +244,7 @@ func WhatsAppLogin(jid string) (string, int, error) {
 			}
 
 			// Get Generated QR Code and Timeout Information
-			qrImage, qrTimeout := WhatsAppGenerateQR(qrChanGenerate)
+			qrImage, qrTimeout := WhatsAppGenerateQR(qrChanGenerate, jid)
 
 			// Return QR Code in Base64 Format and Timeout Information
 			return "data:image/png;base64," + qrImage, qrTimeout, nil
@@ -219,7 +261,7 @@ func WhatsAppLogin(jid string) (string, int, error) {
 	}
 
 	// Return Error WhatsApp Client is not Valid
-	return "", 0, errors.New("WhatsApp Client is not Valid")
+	return "", 0, errors.New("WhatsAppLogin WhatsApp Client is not Valid")
 }
 
 func WhatsAppLoginPair(jid string) (string, int, error) {
@@ -254,7 +296,7 @@ func WhatsAppLoginPair(jid string) (string, int, error) {
 	}
 
 	// Return Error WhatsApp Client is not Valid
-	return "", 0, errors.New("WhatsApp Client is not Valid")
+	return "", 0, errors.New("WhatsAppLoginPair WhatsApp Client is not Valid")
 }
 
 func WhatsAppReconnect(jid string) error {
@@ -276,7 +318,7 @@ func WhatsAppReconnect(jid string) error {
 		return errors.New("WhatsApp Client Store ID is Empty, Please Re-Login and Scan QR Code Again")
 	}
 
-	return errors.New("WhatsApp Client is not Valid")
+	return errors.New("WhatsAppReconnect WhatsApp Client is not Valid")
 }
 
 func WhatsAppLogout(jid string) error {
@@ -312,7 +354,7 @@ func WhatsAppLogout(jid string) error {
 	}
 
 	// Return Error WhatsApp Client is not Valid
-	return errors.New("WhatsApp Client is not Valid")
+	return errors.New("WhatsAppLogout WhatsApp Client is not Valid")
 }
 
 func WhatsAppIsClientOK(jid string) error {
@@ -454,10 +496,25 @@ func WhatsAppCheckRegistered(jid string, id string) error {
 	}
 
 	// Return Error WhatsApp Client is not Valid
-	return errors.New("WhatsApp Client is not Valid")
+	return errors.New("WhatsAppCheckRegistered WhatsApp Client is not Valid")
 }
 
 func WhatsAppSendText(ctx context.Context, jid string, rjid string, message string) (string, error) {
+
+	fmt.Println(WhatsAppClient)
+	fmt.Printf("JID %s, RJID: %s\n ", jid, rjid)
+	fmt.Println(jid)
+
+	firstKey := ""
+
+	for key := range WhatsAppClient {
+		firstKey = key
+		break // Exit the loop after the first key is found
+	}
+
+	jid = firstKey
+	fmt.Printf("firstKey %s \n", firstKey)
+
 	if WhatsAppClient[jid] != nil {
 		var err error
 
@@ -499,7 +556,7 @@ func WhatsAppSendText(ctx context.Context, jid string, rjid string, message stri
 	}
 
 	// Return Error WhatsApp Client is not Valid
-	return "", errors.New("WhatsApp Client is not Valid")
+	return "", errors.New("WhatsAppSendText WhatsApp Client is not Valid")
 }
 
 func WhatsAppSendLocation(ctx context.Context, jid string, rjid string, latitude float64, longitude float64) (string, error) {
@@ -1341,4 +1398,44 @@ func WhatsAppGroupLeave(jid string, gjid string) error {
 
 	// Return Error WhatsApp Client is not Valid
 	return errors.New("WhatsApp Client is not Valid")
+}
+
+func initDB(dbType string) error {
+	var err error
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS whatsmeow_device_client_pivot (
+		  id INTEGER PRIMARY KEY AUTOINCREMENT,
+		  jid TEXT NOT NULL,
+		  token TEXT NOT NULL UNIQUE,
+		  updated_at DATETIME NOT NULL,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+
+	if err != nil {
+		return fmt.Errorf("error creating table: %w", err)
+	}
+
+	return nil
+}
+
+func saveUUID(jid types.JID, token string) error {
+	_, err := db.Exec(`
+		INSERT INTO whatsmeow_device_client_pivot (jid, token, updated_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT(token) DO UPDATE SET 
+		token = excluded.token,
+    	updated_at = excluded.updated_at;
+		`,
+		jid.User, token, time.Now(),
+	)
+	return err
+}
+
+func removeByUUID(token string) error {
+	_, err := db.Exec(`
+  DELETE FROM whatsmeow_device_client_pivot
+  WHERE token = ?
+`, token)
+	return err
 }
