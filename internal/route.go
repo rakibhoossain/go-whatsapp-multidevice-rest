@@ -27,6 +27,10 @@ func Routes(e *echo.Echo) {
 
 	// Route for WhatsApp
 	// ---------------------------------------------
+	e.POST(router.BaseURL+"/client", ctlWhatsApp.CreateClient, auth.BasicAdminAuth())
+	e.GET(router.BaseURL+"/client/:uuid", ctlWhatsApp.ClientStatus, auth.BasicAdminAuth())
+	e.POST(router.BaseURL+"/client/:uuid", ctlWhatsApp.ClientStatusEdit, auth.BasicAdminAuth())
+	e.DELETE(router.BaseURL+"/client/:uuid", ctlWhatsApp.ClientDelete, auth.BasicAdminAuth())
 
 	e.POST(router.BaseURL+"/login", ctlWhatsApp.Login, auth.BasicAuth())
 	e.POST(router.BaseURL+"/login/pair", ctlWhatsApp.LoginPair, auth.BasicAuth())

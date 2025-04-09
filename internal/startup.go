@@ -67,9 +67,11 @@ func getDeviceTokens(devices []*store.Device) map[string]string {
 
 		// Query pivot table for this batch
 		rows, err := pkgWhatsApp.Db.Query(`
-        SELECT jid, token 
-        FROM whatsmeow_device_client_pivot 
-        WHERE jid IN (`+strings.Repeat("?,", len(batch)-1)+`?)`,
+			SELECT p.jid, p.token 
+    		FROM whatsmeow_device_client_pivot p
+    		INNER JOIN whatsmeow_clients c ON p.client_id = c.id
+    		WHERE p.jid IN (`+strings.Repeat("?,", len(batch)-1)+`?)
+    		AND c.status_code = 1`,
 			convertToInterfaceSlice(batch)...,
 		)
 		if err != nil {

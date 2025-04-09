@@ -3,13 +3,17 @@ package whatsapp
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/labstack/echo/v4"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 	"go.mau.fi/whatsmeow/types/events"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1387,13 +1391,28 @@ func WhatsAppGroupLeave(jid string, gjid string) error {
 
 func initDB() error {
 	var err error
+
 	_, err = Db.Exec(`
+		CREATE TABLE IF NOT EXISTS whatsmeow_clients (
+		  id INTEGER PRIMARY KEY AUTOINCREMENT,
+		  client_name TEXT NOT NULL,
+		  uuid TEXT NOT NULL UNIQUE,
+		  secret_key TEXT NOT NULL,
+		  webhook_url TEXT NULL,
+		  status_code INTEGER NOT NULL DEFAULT 1,
+		  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+		  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE INDEX IF NOT EXISTS idx_uuid ON whatsmeow_clients (uuid);
+
 		CREATE TABLE IF NOT EXISTS whatsmeow_device_client_pivot (
 		  id INTEGER PRIMARY KEY AUTOINCREMENT,
-		  jid TEXT NOT NULL,
+		  client_id INTEGER NOT NULL,
+		  jid TEXT,
 		  token TEXT NOT NULL UNIQUE,
-		  updated_at DATETIME NOT NULL,
-		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  FOREIGN KEY (client_id) REFERENCES whatsmeow_clients(id) ON DELETE CASCADE
 		);
 	`)
 
@@ -1423,4 +1442,233 @@ func removeByUUID(token string) error {
   WHERE token = ?
 `, token)
 	return err
+}
+
+type CreateClientRequest struct {
+	Name       string `form:"name" validate:"required,min=3,max=50"`
+	WebhookURL string `form:"webhook_url" validate:"omitempty,url"`
+}
+
+func CreateClient(c echo.Context) error {
+	// Parse and validate request
+	req := new(CreateClientRequest)
+	if err := c.Bind(req); err != nil {
+		return router.ResponseBadRequest(c, "Invalid request format")
+	}
+
+	if err := c.Validate(req); err != nil {
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	// Generate UUID and secret key
+	uuid := generateUUID()
+	secretKey := generateSecretKey()
+
+	// Store in database
+	result, err := Db.Exec(`
+        INSERT INTO whatsmeow_clients 
+        (client_name, uuid, secret_key, webhook_url, status_code) 
+        VALUES (?, ?, ?, ?, 1)`,
+		req.Name, uuid, secretKey, req.WebhookURL,
+	)
+	if err != nil {
+		fmt.Println(err)
+		return router.ResponseInternalError(c, "Failed to create client")
+	}
+
+	// Get the inserted ID
+	id, err := result.LastInsertId()
+	if err != nil {
+		return router.ResponseInternalError(c, "Failed to get client ID")
+	}
+
+	// Prepare response data
+	responseData := map[string]interface{}{
+		"id":          id,
+		"client_name": req.Name,
+		"uuid":        uuid,
+		"webhook_url": req.WebhookURL,
+		"secretKey":   secretKey,
+		"status":      "active",
+	}
+
+	return router.ResponseSuccessWithData(c, "Successfully created client", responseData)
+}
+
+// Helper functions
+func generateUUID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+}
+
+func generateSecretKey() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	key := base64.URLEncoding.EncodeToString(b)
+	keyWithoutUnderscores := strings.ReplaceAll(key, "_", "")
+	return strings.TrimRight(keyWithoutUnderscores, "=")
+}
+
+// ClientStatusResponse defines the response structure
+type ClientStatusResponse struct {
+	ID         int64  `json:"id"`
+	ClientName string `json:"client_name"`
+	UUID       string `json:"uuid"`
+	WebhookURL string `json:"webhook_url"`
+	Status     string `json:"status"`
+	StatusCode int    `json:"status_code"`
+	UserCount  int    `json:"user_count"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
+// ClientStatus returns client status with user count
+func ClientStatus(c echo.Context) error {
+	uuid := c.Param("uuid")
+
+	var response ClientStatusResponse
+	err := Db.QueryRow(`
+        SELECT 
+            c.id, 
+            c.client_name, 
+            c.uuid, 
+            c.webhook_url, 
+            c.status_code,
+            CASE c.status_code 
+                WHEN 1 THEN 'active' 
+                WHEN 0 THEN 'inactive' 
+                ELSE 'unknown' 
+            END as status,
+            c.created_at,
+            c.updated_at,
+            COUNT(p.id) as user_count
+        FROM whatsmeow_clients c
+        LEFT JOIN whatsmeow_device_client_pivot p ON c.id = p.client_id
+        WHERE c.uuid = ?
+        GROUP BY c.id`,
+		uuid,
+	).Scan(
+		&response.ID,
+		&response.ClientName,
+		&response.UUID,
+		&response.WebhookURL,
+		&response.StatusCode,
+		&response.Status,
+		&response.CreatedAt,
+		&response.UpdatedAt,
+		&response.UserCount,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return router.ResponseNotFound(c, "Client not found")
+		}
+		return router.ResponseInternalError(c, "Failed to get client status")
+	}
+
+	return router.ResponseSuccessWithData(c, "Client status retrieved", response)
+}
+
+// ClientStatusEdit updates client status
+type UpdateClientStatusRequest struct {
+	StatusCode string `form:"status_code" validate:"required,oneof=0 1"`
+}
+
+func ClientStatusEdit(c echo.Context) error {
+	uuid := c.Param("uuid")
+
+	// Parse form data
+	req := new(UpdateClientStatusRequest)
+	if err := c.Bind(req); err != nil {
+		return router.ResponseBadRequest(c, "Invalid request format")
+	}
+
+	// Convert string form value to int
+	statusStr := c.FormValue("status_code")
+	statusCode, err := strconv.Atoi(statusStr)
+	if err != nil {
+		return router.ResponseBadRequest(c, "status_code must be a number (0 or 1)")
+	}
+
+	// Validate
+	if err := c.Validate(req); err != nil {
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	// Update status in database
+	result, err := Db.Exec(`
+        UPDATE whatsmeow_clients 
+        SET status_code = ?, 
+            updated_at = CURRENT_TIMESTAMP
+        WHERE uuid = ?`,
+		statusCode,
+		uuid,
+	)
+	if err != nil {
+		return router.ResponseInternalError(c, "Failed to update client status")
+	}
+
+	// Check if client was found
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return router.ResponseInternalError(c, "Failed to verify update")
+	}
+
+	if rowsAffected == 0 {
+		return router.ResponseNotFound(c, "Client not found")
+	}
+
+	// Return updated client status
+	return ClientStatus(c) // Reuse the GET endpoint to return updated status
+}
+
+// ClientDelete handles client deletion
+func ClientDelete(c echo.Context) error {
+	uuid := c.Param("uuid")
+
+	// Start transaction
+	tx, err := Db.Begin()
+	if err != nil {
+		return router.ResponseInternalError(c, "Failed to start transaction")
+	}
+
+	// Delete from pivot table first (due to foreign key)
+	_, err = tx.Exec(`
+        DELETE FROM whatsmeow_device_client_pivot 
+        WHERE client_id IN (
+            SELECT id FROM whatsmeow_clients WHERE uuid = ?
+        )`,
+		uuid,
+	)
+
+	if err != nil {
+		tx.Rollback()
+		return router.ResponseInternalError(c, "Failed to delete client associations")
+	}
+
+	// Delete from clients table
+	result, err := tx.Exec(`
+        DELETE FROM whatsmeow_clients 
+        WHERE uuid = ?`,
+		uuid,
+	)
+
+	if err != nil {
+		tx.Rollback()
+		return router.ResponseInternalError(c, "Failed to delete client")
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		tx.Rollback()
+		return router.ResponseNotFound(c, "Client not found")
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return router.ResponseInternalError(c, "Failed to complete deletion")
+	}
+
+	return router.ResponseSuccess(c, "Client deleted successfully")
 }

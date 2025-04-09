@@ -45,6 +45,22 @@ func convertFileToBytes(file multipart.File) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func CreateClient(c echo.Context) error {
+	return pkgWhatsApp.CreateClient(c)
+}
+
+func ClientStatus(c echo.Context) error {
+	return pkgWhatsApp.ClientStatus(c)
+}
+
+func ClientStatusEdit(c echo.Context) error {
+	return pkgWhatsApp.ClientStatusEdit(c)
+}
+
+func ClientDelete(c echo.Context) error {
+	return pkgWhatsApp.ClientDelete(c)
+}
+
 // Login
 // @Summary     Generate QR Code for WhatsApp Multi-Device Login
 // @Description Get QR Code for WhatsApp Multi-Device Login
