@@ -1507,7 +1507,8 @@ func generateSecretKey() string {
 	_, _ = rand.Read(b)
 	key := base64.URLEncoding.EncodeToString(b)
 	keyWithoutUnderscores := strings.ReplaceAll(key, "_", "")
-	return strings.TrimRight(keyWithoutUnderscores, "=")
+	keyWithoutUnderscores = strings.TrimRight(keyWithoutUnderscores, "=")
+	return strings.TrimLeft(keyWithoutUnderscores, "-")
 }
 
 // ClientStatusResponse defines the response structure
@@ -1516,6 +1517,7 @@ type ClientStatusResponse struct {
 	ClientName string `json:"client_name"`
 	UUID       string `json:"uuid"`
 	WebhookURL string `json:"webhook_url"`
+	SecretKey  string `json:"secret_key"`
 	Status     string `json:"status"`
 	StatusCode int    `json:"status_code"`
 	UserCount  int    `json:"user_count"`
@@ -1534,6 +1536,7 @@ func ClientStatus(c echo.Context) error {
             c.client_name, 
             c.uuid, 
             c.webhook_url, 
+            c.secret_key,
             c.status_code,
             CASE c.status_code 
                 WHEN 1 THEN 'active' 
@@ -1553,6 +1556,7 @@ func ClientStatus(c echo.Context) error {
 		&response.ClientName,
 		&response.UUID,
 		&response.WebhookURL,
+		&response.SecretKey,
 		&response.StatusCode,
 		&response.Status,
 		&response.CreatedAt,
