@@ -1701,6 +1701,7 @@ func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword str
 		WHERE (p.token IS NULL OR p.token = ?)
 		  AND c.uuid = ?
 		  AND c.secret_key = ?
+		  AND c.status_code = 1
 		LIMIT 1`
 
 	var user WhatsAppTenantUser
