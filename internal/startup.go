@@ -106,7 +106,7 @@ func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTe
 				user.WebhookURL = webhookURL.String
 			}
 
-			jidTokenMap[user.UserToken] = &user
+			jidTokenMap[user.JID] = &user
 		}
 	}
 
