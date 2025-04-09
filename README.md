@@ -21,7 +21,7 @@ See deployment section for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 
-Prequisites packages:
+Requisites packages:
 * Go (Go Programming Language)
 * Swag (Go Annotations Converter to Swagger Documentation)
 * GoReleaser (Go Automated Binaries Build)
