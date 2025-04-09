@@ -1,6 +1,7 @@
 package types
 
+import pkgWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/whatsapp"
+
 type AuthBasicPayload struct {
-	JID   string
-	TOKEN string
+	User *pkgWhatsApp.WhatsAppTenantUser
 }

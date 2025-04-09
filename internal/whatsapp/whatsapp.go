@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"bytes"
+	"errors"
 	"github.com/labstack/echo/v4"
 	"io"
 	"mime/multipart"
@@ -15,21 +16,22 @@ import (
 	typWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/internal/whatsapp/types"
 )
 
-func authPayload(c echo.Context) typAuth.AuthBasicPayload {
+func authPayload(c echo.Context) (typAuth.AuthBasicPayload, error) {
 
 	// Get the raw value from context
-	jidValue := c.Get("JID")
-	if jidValue == nil {
+	value := c.Get("User")
+	if value == nil {
 
 	}
 
 	// Type assertion with check
-	jid, ok := c.Get("JID").(string)
+	user, ok := value.(*pkgWhatsApp.WhatsAppTenantUser)
+
 	if ok {
-		return typAuth.AuthBasicPayload{JID: jid, TOKEN: jid}
+		return typAuth.AuthBasicPayload{User: user}, nil
 	}
 
-	return typAuth.AuthBasicPayload{JID: "", TOKEN: ""}
+	return typAuth.AuthBasicPayload{}, errors.New("invalid user data")
 }
 
 func convertFileToBytes(file multipart.File) ([]byte, error) {
@@ -74,7 +76,10 @@ func ClientDelete(c echo.Context) error {
 // @Router      /login [post]
 func Login(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqLogin typWhatsApp.RequestLogin
 	reqLogin.Output = strings.TrimSpace(c.FormValue("output"))
@@ -84,10 +89,10 @@ func Login(c echo.Context) error {
 	}
 
 	// Initialize WhatsApp Client
-	pkgWhatsApp.WhatsAppInitClient(nil, jid)
+	pkgWhatsApp.WhatsAppInitClient(nil, auth.User)
 
 	// Get WhatsApp QR Code Image
-	qrCodeImage, qrCodeTimeout, err := pkgWhatsApp.WhatsAppLogin(jid)
+	qrCodeImage, qrCodeTimeout, err := pkgWhatsApp.WhatsAppLogin(auth.User)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -136,13 +141,16 @@ func Login(c echo.Context) error {
 // @Router      /login/pair [post]
 func LoginPair(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	// Initialize WhatsApp Client
-	pkgWhatsApp.WhatsAppInitClient(nil, jid)
+	pkgWhatsApp.WhatsAppInitClient(nil, auth.User)
 
 	// Get WhatsApp pairing Code text
-	pairCode, pairCodeTimeout, err := pkgWhatsApp.WhatsAppLoginPair(jid)
+	pairCode, pairCodeTimeout, err := pkgWhatsApp.WhatsAppLoginPair(auth.User)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -170,9 +178,12 @@ func LoginPair(c echo.Context) error {
 // @Router      /logout [post]
 func Logout(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
-	err = pkgWhatsApp.WhatsAppLogout(jid)
+	err = pkgWhatsApp.WhatsAppLogout(auth.User)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -190,14 +201,18 @@ func Logout(c echo.Context) error {
 // @Security    BasicAuth
 // @Router      /registered [get]
 func Registered(c echo.Context) error {
-	jid := authPayload(c).JID
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
+
 	remoteJID := strings.TrimSpace(c.QueryParam("msisdn"))
 
 	if len(remoteJID) == 0 {
 		return router.ResponseInternalError(c, "Missing Query Value MSISDN")
 	}
 
-	err := pkgWhatsApp.WhatsAppCheckRegistered(jid, remoteJID)
+	err = pkgWhatsApp.WhatsAppCheckRegistered(auth.User, remoteJID)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -215,9 +230,13 @@ func Registered(c echo.Context) error {
 // @Router      /group [get]
 func GetGroup(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
 
-	group, err := pkgWhatsApp.WhatsAppGroupGet(jid)
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	group, err := pkgWhatsApp.WhatsAppGroupGet(auth.User)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -236,7 +255,11 @@ func GetGroup(c echo.Context) error {
 // @Router      /group/join [post]
 func JoinGroup(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqGroupJoin typWhatsApp.RequestGroupJoin
 	reqGroupJoin.Link = strings.TrimSpace(c.FormValue("link"))
@@ -245,7 +268,7 @@ func JoinGroup(c echo.Context) error {
 		return router.ResponseBadRequest(c, "Missing Form Value Link")
 	}
 
-	group, err := pkgWhatsApp.WhatsAppGroupJoin(jid, reqGroupJoin.Link)
+	group, err := pkgWhatsApp.WhatsAppGroupJoin(auth.User, reqGroupJoin.Link)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -264,7 +287,11 @@ func JoinGroup(c echo.Context) error {
 // @Router      /group/leave [post]
 func LeaveGroup(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqGroupLeave typWhatsApp.RequestGroupLeave
 	reqGroupLeave.GID = strings.TrimSpace(c.FormValue("groupid"))
@@ -273,7 +300,7 @@ func LeaveGroup(c echo.Context) error {
 		return router.ResponseBadRequest(c, "Missing Form Value Group ID")
 	}
 
-	err = pkgWhatsApp.WhatsAppGroupLeave(jid, reqGroupLeave.GID)
+	err = pkgWhatsApp.WhatsAppGroupLeave(auth.User, reqGroupLeave.GID)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -295,7 +322,10 @@ func LeaveGroup(c echo.Context) error {
 func SendText(c echo.Context) error {
 	var err error
 
-	jid := authPayload(c).JID
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqSendMessage typWhatsApp.RequestSendMessage
 	reqSendMessage.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -310,7 +340,7 @@ func SendText(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendText(c.Request().Context(), jid, reqSendMessage.RJID, reqSendMessage.Message)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendText(c.Request().Context(), auth.User, reqSendMessage.RJID, reqSendMessage.Message)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -332,7 +362,11 @@ func SendText(c echo.Context) error {
 // @Router      /send/location [post]
 func SendLocation(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqSendLocation typWhatsApp.RequestSendLocation
 	reqSendLocation.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -352,7 +386,7 @@ func SendLocation(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendLocation(c.Request().Context(), jid, reqSendLocation.RJID, reqSendLocation.Latitude, reqSendLocation.Longitude)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendLocation(c.Request().Context(), auth.User, reqSendLocation.RJID, reqSendLocation.Latitude, reqSendLocation.Longitude)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -374,7 +408,11 @@ func SendLocation(c echo.Context) error {
 // @Router      /send/contact [post]
 func SendContact(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqSendContact typWhatsApp.RequestSendContact
 	reqSendContact.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -394,7 +432,7 @@ func SendContact(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendContact(c.Request().Context(), jid, reqSendContact.RJID, reqSendContact.Name, reqSendContact.Phone)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendContact(c.Request().Context(), auth.User, reqSendContact.RJID, reqSendContact.Name, reqSendContact.Phone)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -416,7 +454,11 @@ func SendContact(c echo.Context) error {
 // @Router      /send/link [post]
 func SendLink(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqSendLink typWhatsApp.RequestSendLink
 	reqSendLink.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -432,7 +474,7 @@ func SendLink(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendLink(c.Request().Context(), jid, reqSendLink.RJID, reqSendLink.Caption, reqSendLink.URL)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendLink(c.Request().Context(), auth.User, reqSendLink.RJID, reqSendLink.Caption, reqSendLink.URL)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -521,7 +563,11 @@ func SendSticker(c echo.Context) error {
 
 func sendMedia(c echo.Context, mediaType string) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqSendMessage typWhatsApp.RequestSendMessage
 	reqSendMessage.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -598,19 +644,19 @@ func sendMedia(c echo.Context, mediaType string) error {
 	var resSendMessage typWhatsApp.ResponseSendMessage
 	switch mediaType {
 	case "document":
-		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendDocument(ctx, jid, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message)
+		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendDocument(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message)
 
 	case "image":
-		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendImage(ctx, jid, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message, reqSendMessage.ViewOnce)
+		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendImage(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message, reqSendMessage.ViewOnce)
 
 	case "audio":
-		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendAudio(ctx, jid, reqSendMessage.RJID, fileBytes, fileType)
+		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendAudio(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType)
 
 	case "video":
-		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendVideo(ctx, jid, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message, reqSendMessage.ViewOnce)
+		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendVideo(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message, reqSendMessage.ViewOnce)
 
 	case "sticker":
-		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendSticker(ctx, jid, reqSendMessage.RJID, fileBytes)
+		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendSticker(ctx, auth.User, reqSendMessage.RJID, fileBytes)
 	}
 
 	// Return Internal Server Error
@@ -637,7 +683,11 @@ func sendMedia(c echo.Context, mediaType string) error {
 // @Router      /send/poll [post]
 func SendPoll(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqSendPoll typWhatsApp.RequestSendPoll
 	reqSendPoll.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -676,7 +726,7 @@ func SendPoll(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendPoll(c.Request().Context(), jid, reqSendPoll.RJID, reqSendPoll.Question, pollOptions, reqSendPoll.MultiAnswer)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendPoll(c.Request().Context(), auth.User, reqSendPoll.RJID, reqSendPoll.Question, pollOptions, reqSendPoll.MultiAnswer)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -686,7 +736,7 @@ func SendPoll(c echo.Context) error {
 
 // MessageEdit
 // @Summary     Update Message
-// @Description Update Message to Spesific WhatsApp Personal ID or Group ID
+// @Description Update Message to Specific WhatsApp Personal ID or Group ID
 // @Tags        WhatsApp Message
 // @Accept      multipart/form-data
 // @Produce     json
@@ -698,7 +748,11 @@ func SendPoll(c echo.Context) error {
 // @Router      /message/edit [post]
 func MessageEdit(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqMessageUpdate typWhatsApp.RequestMessage
 	reqMessageUpdate.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -718,7 +772,7 @@ func MessageEdit(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppMessageEdit(c.Request().Context(), jid, reqMessageUpdate.RJID, reqMessageUpdate.MSGID, reqMessageUpdate.Message)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppMessageEdit(c.Request().Context(), auth.User, reqMessageUpdate.RJID, reqMessageUpdate.MSGID, reqMessageUpdate.Message)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -740,7 +794,11 @@ func MessageEdit(c echo.Context) error {
 // @Router      /message/react [post]
 func MessageReact(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqMessageUpdate typWhatsApp.RequestMessage
 	reqMessageUpdate.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -760,7 +818,7 @@ func MessageReact(c echo.Context) error {
 	}
 
 	var resSendMessage typWhatsApp.ResponseSendMessage
-	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppMessageReact(c.Request().Context(), jid, reqMessageUpdate.RJID, reqMessageUpdate.MSGID, reqMessageUpdate.Emoji)
+	resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppMessageReact(c.Request().Context(), auth.User, reqMessageUpdate.RJID, reqMessageUpdate.MSGID, reqMessageUpdate.Emoji)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}
@@ -781,7 +839,11 @@ func MessageReact(c echo.Context) error {
 // @Router      /message/delete [post]
 func MessageDelete(c echo.Context) error {
 	var err error
-	jid := authPayload(c).JID
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseInternalError(c, err.Error())
+	}
 
 	var reqMessageUpdate typWhatsApp.RequestMessage
 	reqMessageUpdate.RJID = strings.TrimSpace(c.FormValue("msisdn"))
@@ -795,7 +857,7 @@ func MessageDelete(c echo.Context) error {
 		return router.ResponseBadRequest(c, "Missing Form Value Message ID")
 	}
 
-	err = pkgWhatsApp.WhatsAppMessageDelete(c.Request().Context(), jid, reqMessageUpdate.RJID, reqMessageUpdate.MSGID)
+	err = pkgWhatsApp.WhatsAppMessageDelete(c.Request().Context(), auth.User, reqMessageUpdate.RJID, reqMessageUpdate.MSGID)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}

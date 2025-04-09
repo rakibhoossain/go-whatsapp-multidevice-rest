@@ -12,11 +12,11 @@ func Routines(cron *cron.Cron) {
 
 	cron.AddFunc("0 * * * * *", func() {
 		// If WhatsAppClient Connection is more than 0
-		if len(pkgWhatsApp.WhatsAppClient) > 0 {
+		if len(pkgWhatsApp.WhatsAppActiveTenantClient) > 0 {
 			// Check Every Authenticated MSISDN
-			for jid, client := range pkgWhatsApp.WhatsAppClient {
+			for jid, client := range pkgWhatsApp.WhatsAppActiveTenantClient {
 				// Get Real JID from Datastore
-				realJID := client.Store.ID.User
+				realJID := client.Conn.Store.ID.User
 
 				// Mask JID for Logging Information
 				maskJID := realJID[0:len(realJID)-4] + "xxxx"
@@ -30,8 +30,8 @@ func Routines(cron *cron.Cron) {
 					log.Print(nil).Info("Logging out WhatsApp Client for " + maskJID + " Due to Missmatch Authentication")
 
 					// Logout WhatsAppClient Device
-					_ = pkgWhatsApp.WhatsAppLogout(jid)
-					delete(pkgWhatsApp.WhatsAppClient, jid)
+					_ = pkgWhatsApp.WhatsAppLogout(client.User)
+					delete(pkgWhatsApp.WhatsAppActiveTenantClient, jid)
 				}
 			}
 		}

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
+	pkgWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/whatsapp"
 )
 
 // BasicAuth Function as Middleware for Basic Authorization
@@ -16,8 +16,13 @@ func BasicAuth() echo.MiddlewareFunc {
 			// Parse HTTP Header Authorization
 			authHeader := strings.SplitN(c.Request().Header.Get("Authorization"), " ", 2)
 
+			uuid := c.Request().Header.Get("apiKey")
+			if uuid == "" {
+				return router.ResponseBadRequest(c, "required api key")
+			}
+
 			// Check HTTP Header Authorization Section
-			// Authorization Section Length Should Be 2
+			//  Length Should Be 2
 			// The First Authorization Section Should Be "Basic"
 			if len(authHeader) != 2 || authHeader[0] != "Basic" {
 				return router.ResponseAuthenticate(c)
@@ -39,13 +44,22 @@ func BasicAuth() echo.MiddlewareFunc {
 				return router.ResponseBadRequest(c, "")
 			}
 
-			// Validate Authentication Password
-			if authCredentials[1] != AuthBasicPassword {
-				return router.ResponseBadRequest(c, "Invalid Authentication")
+			//// Validate Authentication Password
+			//if authCredentials[1] != AuthBasicPassword {
+			//	return router.ResponseBadRequest(c, "Invalid Authentication")
+			//}
+
+			user, err := pkgWhatsApp.GetWhatsAppUserWithToken(uuid, authCredentials[0], authCredentials[1])
+			if err != nil {
+
+			}
+
+			if user == nil {
+				user = &pkgWhatsApp.WhatsAppTenantUser{JID: "", UserToken: uuid}
 			}
 
 			// Store the username in the context instead of modifying the body
-			c.Set("JID", authCredentials[0])
+			c.Set("User", user)
 
 			// Call Next Handler Function With Current Request
 			return next(c)

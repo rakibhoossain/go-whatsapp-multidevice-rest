@@ -23,9 +23,9 @@ func Startup() {
 	for _, device := range devices {
 
 		jid := pkgWhatsApp.WhatsAppDecomposeJID(device.ID.User)
-		token := jidTokenMap[jid]
+		user := jidTokenMap[jid]
 
-		if token == "" {
+		if user == nil {
 			continue
 		}
 
@@ -34,27 +34,27 @@ func Startup() {
 
 		// Print Restore Log
 		log.Print(nil).Info("Restoring WhatsApp Client for " + maskJID)
-		log.Print(nil).Info("Restoring WhatsApp Client for UUID " + token)
+		log.Print(nil).Info("Restoring WhatsApp Client for UUID " + user.UserToken)
 
 		// Initialize WhatsApp Client
-		pkgWhatsApp.WhatsAppInitClient(device, token)
+		pkgWhatsApp.WhatsAppInitClient(device, user)
 
 		// Reconnect WhatsApp Client WebSocket
-		err = pkgWhatsApp.WhatsAppReconnect(token)
+		err = pkgWhatsApp.WhatsAppReconnect(user)
 		if err != nil {
 			log.Print(nil).Error(err.Error())
 		}
 	}
 }
 
-func getDeviceTokens(devices []*store.Device) map[string]string {
+func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTenantUser {
 	// Extract all JIDs first
 	var jids []string
 	for _, device := range devices {
 		jids = append(jids, pkgWhatsApp.WhatsAppDecomposeJID(device.ID.User))
 	}
 
-	var jidTokenMap = make(map[string]string)
+	var jidTokenMap = make(map[string]*pkgWhatsApp.WhatsAppTenantUser)
 
 	// Process in chunks of 100
 	batchSize := 100
@@ -67,7 +67,7 @@ func getDeviceTokens(devices []*store.Device) map[string]string {
 
 		// Query pivot table for this batch
 		rows, err := pkgWhatsApp.Db.Query(`
-			SELECT p.jid, p.token 
+			SELECT p.jid, p.token, c.webhook_url
     		FROM whatsmeow_device_client_pivot p
     		INNER JOIN whatsmeow_clients c ON p.client_id = c.id
     		WHERE p.jid IN (`+strings.Repeat("?,", len(batch)-1)+`?)
@@ -87,12 +87,26 @@ func getDeviceTokens(devices []*store.Device) map[string]string {
 		}(rows)
 
 		for rows.Next() {
-			var jid, token string
-			if err := rows.Scan(&jid, &token); err != nil {
+			var user pkgWhatsApp.WhatsAppTenantUser
+			var jid, webhookURL sql.NullString
+
+			if err := rows.Scan(&jid,
+				&user.UserToken,
+				&webhookURL); err != nil {
 				log.Print(nil).Error("Failed to scan pivot row: " + err.Error())
 				continue
 			}
-			jidTokenMap[jid] = token
+
+			// Handle nullable fields
+			if jid.Valid {
+				user.JID = jid.String
+			}
+
+			if webhookURL.Valid {
+				user.WebhookURL = webhookURL.String
+			}
+
+			jidTokenMap[user.UserToken] = &user
 		}
 	}
 
