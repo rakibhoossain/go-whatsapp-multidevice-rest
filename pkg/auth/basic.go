@@ -51,11 +51,11 @@ func BasicAuth() echo.MiddlewareFunc {
 
 			user, err := pkgWhatsApp.GetWhatsAppUserWithToken(uuid, authCredentials[0], authCredentials[1])
 			if err != nil {
-
+				return router.ResponseBadRequest(c, err.Error())
 			}
 
 			if user == nil {
-				user = &pkgWhatsApp.WhatsAppTenantUser{JID: "", UserToken: uuid}
+				return router.ResponseBadRequest(c, "Bad user")
 			}
 
 			// Store the username in the context instead of modifying the body

@@ -67,7 +67,7 @@ func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTe
 
 		// Query pivot table for this batch
 		rows, err := pkgWhatsApp.Db.Query(`
-			SELECT p.jid, p.token, c.webhook_url
+			SELECT p.jid, p.token, c.webhook_url, c.status_code, c.id AS client_id
     		FROM whatsmeow_device_client_pivot p
     		INNER JOIN whatsmeow_clients c ON p.client_id = c.id
     		WHERE p.jid IN (`+strings.Repeat("?,", len(batch)-1)+`?)
@@ -92,7 +92,7 @@ func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTe
 
 			if err := rows.Scan(&jid,
 				&user.UserToken,
-				&webhookURL); err != nil {
+				&webhookURL, &user.StatusCode, &user.ClientId); err != nil {
 				log.Print(nil).Error("Failed to scan pivot row: " + err.Error())
 				continue
 			}

@@ -42,6 +42,8 @@ type WhatsAppTenantUser struct {
 	JID        string `json:"jid"`
 	UserToken  string `json:"token"`
 	WebhookURL string `json:"webhook_url"`
+	ClientId   int64  `json:"client_id"`
+	StatusCode int    `json:"status_code"`
 }
 
 type WhatsAppTenantClient struct {
@@ -156,19 +158,16 @@ func createEventHandler(user *WhatsAppTenantUser) func(interface{}) {
 func handlePairedEvent(user *WhatsAppTenantUser, evt *events.PairSuccess) {
 	err := saveUUID(evt.ID, user)
 	if err != nil {
-		fmt.Printf("connected: JID store failed JID: %s, UUID: %s", evt.ID, user.UserToken, evt.ID.User)
+		log.Print(nil).Info("Store JID failed: " + user.UserToken)
 		return
 	}
-	fmt.Printf("connected: JID: %s, UUID: %s", evt.ID, user.UserToken, evt.ID.User)
 }
 
 func handleLoggedOutEvent(user *WhatsAppTenantUser) {
 	err := removeByUUID(user)
 	if err != nil {
-		fmt.Printf("logout failed UUID: %s", user.UserToken)
-		return
+		log.Print(nil).Info("logout failed UUID: " + user.UserToken)
 	}
-	fmt.Printf("logout UUID: %s", user.UserToken)
 }
 
 func WhatsAppGetUserAgent(agentType string) waCompanionReg.DeviceProps_PlatformType {
@@ -1441,13 +1440,13 @@ func initDB() error {
 
 func saveUUID(jid types.JID, user *WhatsAppTenantUser) error {
 	_, err := Db.Exec(`
-		INSERT INTO whatsmeow_device_client_pivot (jid, token, updated_at)
-		VALUES (?, ?, ?)
+		INSERT INTO whatsmeow_device_client_pivot (jid, token, updated_at, client_id)
+		VALUES (?, ?, ?, ?)
 		ON CONFLICT(token) DO UPDATE SET 
 		token = excluded.token,
     	updated_at = excluded.updated_at;
 		`,
-		WhatsAppDecomposeJID(jid.User), user.UserToken, time.Now(),
+		WhatsAppDecomposeJID(jid.User), user.UserToken, time.Now(), user.ClientId,
 	)
 	return err
 }
@@ -1693,65 +1692,25 @@ func ClientDelete(c echo.Context) error {
 	return router.ResponseSuccess(c, "Client deleted successfully")
 }
 
-// GetWhatsAppUser retrieves a single user with device pivot data
-func GetWhatsAppUser(uuid string) (*WhatsAppTenantUser, error) {
-
-	query := `
-        SELECT 
-            p.jid, p.token, c.webhook_url
-        FROM whatsmeow_device_client_pivot p
-        LEFT JOIN whatsmeow_clients c ON c.id = p.client_id
-        WHERE c.uuid = ?
-		AND c.status_code = 1
-        LIMIT 1`
-
-	var user WhatsAppTenantUser
-	var jid, webhookURL sql.NullString
-
-	err := Db.QueryRow(query, uuid).Scan(
-		&jid,
-		&user.UserToken,
-		&webhookURL,
-	)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("database error: %w", err)
-	}
-
-	// Handle nullable fields
-	if jid.Valid {
-		user.JID = jid.String
-	}
-
-	if webhookURL.Valid {
-		user.WebhookURL = webhookURL.String
-	}
-
-	return &user, nil
-}
-
 func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword string) (*WhatsAppTenantUser, error) {
 	query := `
         SELECT 
-            p.jid, p.token, c.webhook_url
-        FROM whatsmeow_device_client_pivot p
-        LEFT JOIN whatsmeow_clients c ON c.id = p.client_id
-        WHERE c.uuid = ?
-		AND c.status_code = 1
-		AND c.uuid = ?
-		AND c.secret_key = ?
-        LIMIT 1`
+		  p.jid, c.webhook_url, c.status_code, c.id AS client_id
+		FROM whatsmeow_clients c
+		LEFT JOIN whatsmeow_device_client_pivot p ON p.client_id = c.id
+		WHERE (p.token IS NULL OR p.token = ?)
+		  AND c.uuid = ?
+		  AND c.secret_key = ?
+		LIMIT 1`
 
 	var user WhatsAppTenantUser
 	var jid, webhookURL sql.NullString
 
 	err := Db.QueryRow(query, uuid, clientName, clientPassword).Scan(
 		&jid,
-		&user.UserToken,
 		&webhookURL,
+		&user.StatusCode,
+		&user.ClientId,
 	)
 
 	if err != nil {
@@ -1769,6 +1728,8 @@ func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword str
 	if webhookURL.Valid {
 		user.WebhookURL = webhookURL.String
 	}
+
+	user.UserToken = uuid
 
 	return &user, nil
 }
