@@ -164,9 +164,25 @@ func handlePairedEvent(user *WhatsAppTenantUser, evt *events.PairSuccess) {
 }
 
 func handleLoggedOutEvent(user *WhatsAppTenantUser) {
+
+	log.Print(nil).Info("logout UUID: " + user.UserToken)
+
+	if WhatsAppActiveTenantClient[user.UserToken] != nil {
+		err := WhatsAppLogout(user)
+		if err != nil {
+			log.Print(nil).Info("logout failed UUID: " + err.Error())
+		}
+
+		if WhatsAppActiveTenantClient[user.UserToken] != nil {
+			delete(WhatsAppActiveTenantClient, user.UserToken)
+		}
+	}
+
+	log.Print(nil).Info(WhatsAppActiveTenantClient)
+
 	err := removeByUUID(user)
 	if err != nil {
-		log.Print(nil).Info("logout failed UUID: " + user.UserToken)
+		log.Print(nil).Info("logout failed UUID: " + err.Error())
 	}
 }
 
@@ -295,8 +311,9 @@ func WhatsAppLoginPair(user *WhatsAppTenantUser) (string, int, error) {
 				return "", 0, err
 			}
 
+			jid := WhatsAppDecomposeJID(user.JID)
 			// Request Pairing Code
-			code, err := WhatsAppActiveTenantClient[user.UserToken].Conn.PairPhone(user.JID, true, whatsmeow.PairClientChrome, "Chrome ("+WhatsAppGetUserOS()+")")
+			code, err := WhatsAppActiveTenantClient[user.UserToken].Conn.PairPhone(jid, true, whatsmeow.PairClientChrome, "Chrome ("+WhatsAppGetUserOS()+")")
 			if err != nil {
 				return "", 0, err
 			}
