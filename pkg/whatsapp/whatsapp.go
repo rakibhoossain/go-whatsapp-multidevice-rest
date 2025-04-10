@@ -1727,21 +1727,35 @@ func ClientDelete(c echo.Context) error {
 }
 
 func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword string) (*WhatsAppTenantUser, error) {
-	query := `
-        SELECT 
-		  p.jid, c.webhook_url, c.status_code, c.id AS client_id
-		FROM whatsmeow_clients c
-		LEFT JOIN whatsmeow_device_client_pivot p ON p.client_id = c.id
-		WHERE (p.token IS NULL OR p.token = ?)
-		  AND c.uuid = ?
-		  AND c.secret_key = ?
-		  AND c.status_code = 1
-		LIMIT 1`
 
-	var user WhatsAppTenantUser
-	var jid, webhookURL sql.NullString
+	var (
+		user       WhatsAppTenantUser
+		jid        sql.NullString
+		webhookURL sql.NullString
+	)
 
-	err := Db.QueryRow(query, uuid, clientName, clientPassword).Scan(
+	query1 := `
+	SELECT 
+		p.jid, c.webhook_url, c.status_code, c.id AS client_id
+	FROM whatsmeow_device_client_pivot p
+	JOIN whatsmeow_clients c ON p.client_id = c.id
+	WHERE p.token = ?
+		AND c.uuid = ?
+		AND c.secret_key = ?
+		AND c.status_code = 1
+	LIMIT 1`
+
+	query2 := `
+			SELECT 
+				c.webhook_url, c.status_code, c.id AS client_id
+			FROM whatsmeow_clients c
+			WHERE c.uuid = ?
+				AND c.secret_key = ?
+				AND c.status_code = 1
+			LIMIT 1
+		`
+
+	err := Db.QueryRow(query1, uuid, clientName, clientPassword).Scan(
 		&jid,
 		&webhookURL,
 		&user.StatusCode,
@@ -1750,9 +1764,24 @@ func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword str
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+			err = Db.QueryRow(query2, clientName, clientPassword).Scan(
+				&webhookURL,
+				&user.StatusCode,
+				&user.ClientId,
+			)
+
+			if err != nil {
+				if err == sql.ErrNoRows {
+					return nil, fmt.Errorf("user not found")
+				}
+				return nil, fmt.Errorf("database error: %w", err)
+			}
+
+			// Set jid to null since no pivot record was found
+			jid = sql.NullString{}
+		} else {
+			return nil, fmt.Errorf("database error: %w", err)
 		}
-		return nil, fmt.Errorf("database error: %w", err)
 	}
 
 	// Handle nullable fields
