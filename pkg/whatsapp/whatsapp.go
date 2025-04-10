@@ -316,6 +316,17 @@ func WhatsAppLogin(user *WhatsAppTenantUser) (string, int, error) {
 	return "", 0, errors.New("WhatsAppLogin WhatsApp Client is not Valid")
 }
 
+func WhatsAppStatusCheck(user *WhatsAppTenantUser) (string, error) {
+	if WhatsAppActiveTenantClient[user.UserToken] != nil {
+		if WhatsAppActiveTenantClient[user.UserToken].Conn.Store.ID != nil {
+			return "Connected", nil
+		}
+	}
+
+	// Return Error WhatsApp Client is not Valid
+	return "", errors.New("Not connected")
+}
+
 func WhatsAppLoginPair(user *WhatsAppTenantUser) (string, int, error) {
 	if WhatsAppActiveTenantClient[user.UserToken] != nil {
 		// Make Sure WebSocket Connection is Disconnected

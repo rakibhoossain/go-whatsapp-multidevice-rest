@@ -191,6 +191,22 @@ func Logout(c echo.Context) error {
 	return router.ResponseSuccess(c, "Successfully Logged Out")
 }
 
+func Status(c echo.Context) error {
+	var err error
+	var status string
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	status, err = pkgWhatsApp.WhatsAppStatusCheck(auth.User)
+	if err != nil {
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	return router.ResponseSuccess(c, status)
+}
+
 // Registered
 // @Summary     Check If WhatsApp Personal ID is Registered
 // @Description Check WhatsApp Personal ID is Registered
