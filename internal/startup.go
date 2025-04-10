@@ -21,15 +21,14 @@ func Startup() {
 
 	// Do Reconnect for Every Device in Datastore
 	for _, device := range devices {
-
-		jid := pkgWhatsApp.WhatsAppDecomposeJID(device.ID.User)
-		user := jidTokenMap[jid]
+		user := jidTokenMap[device.ID.String()]
 
 		if user == nil {
 			continue
 		}
 
 		// Mask JID for Logging Information
+		jid := device.ID.String()
 		maskJID := jid[0:len(jid)-4] + "xxxx"
 
 		// Print Restore Log
@@ -51,7 +50,7 @@ func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTe
 	// Extract all JIDs first
 	var jids []string
 	for _, device := range devices {
-		jids = append(jids, pkgWhatsApp.WhatsAppDecomposeJID(device.ID.User))
+		jids = append(jids, device.ID.String())
 	}
 
 	var jidTokenMap = make(map[string]*pkgWhatsApp.WhatsAppTenantUser)

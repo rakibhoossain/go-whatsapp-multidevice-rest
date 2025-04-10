@@ -1446,7 +1446,7 @@ func saveUUID(jid types.JID, user *WhatsAppTenantUser) error {
 		token = excluded.token,
     	updated_at = excluded.updated_at;
 		`,
-		WhatsAppDecomposeJID(jid.User), user.UserToken, time.Now(), user.ClientId,
+		jid, user.UserToken, time.Now(), user.ClientId,
 	)
 	return err
 }
