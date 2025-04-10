@@ -6,12 +6,15 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 	"go.mau.fi/whatsmeow/types/events"
+	"io"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strconv"
 	"strings"
@@ -161,9 +164,13 @@ func handlePairedEvent(user *WhatsAppTenantUser, evt *events.PairSuccess) {
 		log.Print(nil).Info("Store JID failed: " + user.UserToken)
 		return
 	}
+
+	sendWebhookEvent("PAIR_SUCCESS", *user)
 }
 
 func handleLoggedOutEvent(user *WhatsAppTenantUser) {
+
+	tmpUser := *user
 
 	log.Print(nil).Info("logout UUID: " + user.UserToken)
 
@@ -184,6 +191,8 @@ func handleLoggedOutEvent(user *WhatsAppTenantUser) {
 	if err != nil {
 		log.Print(nil).Info("logout failed UUID: " + err.Error())
 	}
+	
+	sendWebhookEvent("LOGGED_OUT", tmpUser)
 }
 
 func WhatsAppGetUserAgent(agentType string) waCompanionReg.DeviceProps_PlatformType {
@@ -1750,4 +1759,61 @@ func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword str
 	user.UserToken = uuid
 
 	return &user, nil
+}
+
+// IsValidHTTPSURL checks if a given string is a valid HTTPS URL.
+func IsValidHTTPSURL(urlString string) bool {
+	// Parse the URL
+	parsedURL, err := url.ParseRequestURI(urlString)
+	if err != nil {
+		return false // Invalid URL format
+	}
+
+	// Check if the scheme is "https" (case-insensitive)
+	if strings.ToLower(parsedURL.Scheme) != "https" {
+		return false // Not an HTTPS URL
+	}
+
+	// Check if the host is present
+	if parsedURL.Host == "" {
+		return false // Missing host
+	}
+
+	return true // It's a valid HTTPS URL
+}
+
+// Webhook sender function
+func sendWebhookEvent(eventType string, user WhatsAppTenantUser) {
+	if user.WebhookURL != "" && IsValidHTTPSURL(user.WebhookURL) {
+
+		payload := map[string]interface{}{
+			"event":     eventType,
+			"apiKey":    user.UserToken,
+			"JID":       user.JID,
+			"client_id": user.ClientId,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}
+
+		jsonData, err := json.Marshal(payload)
+		if err != nil {
+			log.Print(nil).Info(fmt.Sprintf("error marshaling webhook payload: %w", err))
+		}
+
+		resp, err := http.Post(user.WebhookURL, "application/json", bytes.NewBuffer(jsonData))
+		if err != nil {
+			log.Print(nil).Info(fmt.Sprintf("error sending webhook: %w", err))
+		}
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+
+			}
+		}(resp.Body)
+
+		if resp.StatusCode >= 400 {
+			log.Print(nil).Info(fmt.Sprintf("webhook returned status %d", resp.StatusCode))
+		}
+
+	}
 }
