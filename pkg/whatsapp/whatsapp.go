@@ -1454,25 +1454,26 @@ func initDB() error {
 
 	_, err = Db.Exec(`
 		CREATE TABLE IF NOT EXISTS whatsmeow_clients (
-		  id INTEGER PRIMARY KEY AUTOINCREMENT,
+		  id SERIAL PRIMARY KEY,
 		  client_name TEXT NOT NULL,
-		  uuid TEXT NOT NULL UNIQUE,
+		  uuid UUID NOT NULL UNIQUE,
 		  secret_key TEXT NOT NULL,
-		  webhook_url TEXT NULL,
+		  webhook_url TEXT,
 		  status_code INTEGER NOT NULL DEFAULT 1,
-		  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-		  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+		  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+		  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		);
+		
 		CREATE INDEX IF NOT EXISTS idx_uuid ON whatsmeow_clients (uuid);
-
+		
 		CREATE TABLE IF NOT EXISTS whatsmeow_device_client_pivot (
-		  id INTEGER PRIMARY KEY AUTOINCREMENT,
+		  id SERIAL PRIMARY KEY,
 		  client_id INTEGER NOT NULL,
 		  jid TEXT,
 		  token TEXT NOT NULL UNIQUE,
-		  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		  FOREIGN KEY (client_id) REFERENCES whatsmeow_clients(id) ON DELETE CASCADE
+		  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+		  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+		  CONSTRAINT fk_client FOREIGN KEY (client_id) REFERENCES whatsmeow_clients(id) ON DELETE CASCADE
 		);
 	`)
 
@@ -1486,10 +1487,9 @@ func initDB() error {
 func saveUUID(jid types.JID, user *WhatsAppTenantUser) error {
 	_, err := Db.Exec(`
 		INSERT INTO whatsmeow_device_client_pivot (jid, token, updated_at, client_id)
-		VALUES (?, ?, ?, ?)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT(token) DO UPDATE SET 
-		token = excluded.token,
-    	updated_at = excluded.updated_at;
+			updated_at = EXCLUDED.updated_at;
 		`,
 		jid, user.UserToken, time.Now(), user.ClientId,
 	)
@@ -1498,9 +1498,9 @@ func saveUUID(jid types.JID, user *WhatsAppTenantUser) error {
 
 func removeByUUID(user *WhatsAppTenantUser) error {
 	_, err := Db.Exec(`
-  DELETE FROM whatsmeow_device_client_pivot
-  WHERE token = ?
-`, user.UserToken)
+		DELETE FROM whatsmeow_device_client_pivot
+		WHERE token = $1
+	`, user.UserToken)
 	return err
 }
 
@@ -1525,21 +1525,18 @@ func CreateClient(c echo.Context) error {
 	secretKey := generateSecretKey()
 
 	// Store in database
-	result, err := Db.Exec(`
+	var id int64
+	err := Db.QueryRow(`
         INSERT INTO whatsmeow_clients 
         (client_name, uuid, secret_key, webhook_url, status_code) 
-        VALUES (?, ?, ?, ?, 1)`,
+        VALUES ($1, $2, $3, $4, 1)
+        RETURNING id`,
 		req.Name, uuid, secretKey, req.WebhookURL,
-	)
+	).Scan(&id)
+
 	if err != nil {
 		fmt.Println(err)
 		return router.ResponseInternalError(c, "Failed to create client")
-	}
-
-	// Get the inserted ID
-	id, err := result.LastInsertId()
-	if err != nil {
-		return router.ResponseInternalError(c, "Failed to get client ID")
 	}
 
 	// Prepare response data
@@ -1608,7 +1605,7 @@ func ClientStatus(c echo.Context) error {
             COUNT(p.id) as user_count
         FROM whatsmeow_clients c
         LEFT JOIN whatsmeow_device_client_pivot p ON c.id = p.client_id
-        WHERE c.uuid = ?
+        WHERE c.uuid = $1
         GROUP BY c.id`,
 		uuid,
 	).Scan(
@@ -1663,9 +1660,9 @@ func ClientStatusEdit(c echo.Context) error {
 	// Update status in database
 	result, err := Db.Exec(`
         UPDATE whatsmeow_clients 
-        SET status_code = ?, 
+        SET status_code = $1, 
             updated_at = CURRENT_TIMESTAMP
-        WHERE uuid = ?`,
+        WHERE uuid = $2`,
 		statusCode,
 		uuid,
 	)
@@ -1691,45 +1688,27 @@ func ClientStatusEdit(c echo.Context) error {
 func ClientDelete(c echo.Context) error {
 	uuid := c.Param("uuid")
 
-	// Start transaction
 	tx, err := Db.Begin()
 	if err != nil {
 		return router.ResponseInternalError(c, "Failed to start transaction")
 	}
 
-	// Delete from pivot table first (due to foreign key)
-	_, err = tx.Exec(`
-        DELETE FROM whatsmeow_device_client_pivot 
-        WHERE client_id IN (
-            SELECT id FROM whatsmeow_clients WHERE uuid = ?
-        )`,
-		uuid,
-	)
+	// Delete client (ON DELETE CASCADE will handle related pivot rows)
+	var deletedID int64
+	err = tx.QueryRow(`
+		DELETE FROM whatsmeow_clients 
+		WHERE uuid = $1 
+		RETURNING id
+	`, uuid).Scan(&deletedID)
 
-	if err != nil {
+	if err == sql.ErrNoRows {
 		tx.Rollback()
-		return router.ResponseInternalError(c, "Failed to delete client associations")
-	}
-
-	// Delete from clients table
-	result, err := tx.Exec(`
-        DELETE FROM whatsmeow_clients 
-        WHERE uuid = ?`,
-		uuid,
-	)
-
-	if err != nil {
+		return router.ResponseNotFound(c, "Client not found")
+	} else if err != nil {
 		tx.Rollback()
 		return router.ResponseInternalError(c, "Failed to delete client")
 	}
 
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		tx.Rollback()
-		return router.ResponseNotFound(c, "Client not found")
-	}
-
-	// Commit transaction
 	if err := tx.Commit(); err != nil {
 		return router.ResponseInternalError(c, "Failed to complete deletion")
 	}
@@ -1738,7 +1717,6 @@ func ClientDelete(c echo.Context) error {
 }
 
 func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword string) (*WhatsAppTenantUser, error) {
-
 	var (
 		user       WhatsAppTenantUser
 		jid        sql.NullString
@@ -1746,25 +1724,31 @@ func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword str
 	)
 
 	query1 := `
-	SELECT 
-		p.jid, c.webhook_url, c.status_code, c.id AS client_id
-	FROM whatsmeow_device_client_pivot p
-	JOIN whatsmeow_clients c ON p.client_id = c.id
-	WHERE p.token = ?
-		AND c.uuid = ?
-		AND c.secret_key = ?
-		AND c.status_code = 1
-	LIMIT 1`
+		SELECT 
+			p.jid, 
+			c.webhook_url, 
+			c.status_code, 
+			c.id AS client_id
+		FROM whatsmeow_device_client_pivot p
+		JOIN whatsmeow_clients c ON p.client_id = c.id
+		WHERE p.token = $1
+			AND c.uuid = $2
+			AND c.secret_key = $3
+			AND c.status_code = 1
+		LIMIT 1
+	`
 
 	query2 := `
-			SELECT 
-				c.webhook_url, c.status_code, c.id AS client_id
-			FROM whatsmeow_clients c
-			WHERE c.uuid = ?
-				AND c.secret_key = ?
-				AND c.status_code = 1
-			LIMIT 1
-		`
+		SELECT 
+			c.webhook_url, 
+			c.status_code, 
+			c.id AS client_id
+		FROM whatsmeow_clients c
+		WHERE c.uuid = $1
+			AND c.secret_key = $2
+			AND c.status_code = 1
+		LIMIT 1
+	`
 
 	err := Db.QueryRow(query1, uuid, clientName, clientPassword).Scan(
 		&jid,
@@ -1775,31 +1759,28 @@ func GetWhatsAppUserWithToken(uuid string, clientName string, clientPassword str
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			// Try fallback query if no device-user match found
 			err = Db.QueryRow(query2, clientName, clientPassword).Scan(
 				&webhookURL,
 				&user.StatusCode,
 				&user.ClientId,
 			)
-
 			if err != nil {
 				if err == sql.ErrNoRows {
 					return nil, fmt.Errorf("user not found")
 				}
 				return nil, fmt.Errorf("database error: %w", err)
 			}
-
-			// Set jid to null since no pivot record was found
-			jid = sql.NullString{}
+			jid = sql.NullString{} // No device row means no JID
 		} else {
 			return nil, fmt.Errorf("database error: %w", err)
 		}
 	}
 
-	// Handle nullable fields
+	// Convert nullable fields to Go strings
 	if jid.Valid {
 		user.JID = jid.String
 	}
-
 	if webhookURL.Valid {
 		user.WebhookURL = webhookURL.String
 	}

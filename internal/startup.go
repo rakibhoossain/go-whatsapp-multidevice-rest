@@ -2,6 +2,7 @@ package internal
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/log"
 	pkgWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/whatsapp"
 	"go.mau.fi/whatsmeow/store"
@@ -47,15 +48,13 @@ func Startup() {
 }
 
 func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTenantUser {
-	// Extract all JIDs first
 	var jids []string
 	for _, device := range devices {
 		jids = append(jids, device.ID.String())
 	}
 
-	var jidTokenMap = make(map[string]*pkgWhatsApp.WhatsAppTenantUser)
+	jidTokenMap := make(map[string]*pkgWhatsApp.WhatsAppTenantUser)
 
-	// Process in chunks of 100
 	batchSize := 100
 	for i := 0; i < len(jids); i += batchSize {
 		end := i + batchSize
@@ -64,49 +63,49 @@ func getDeviceTokens(devices []*store.Device) map[string]*pkgWhatsApp.WhatsAppTe
 		}
 		batch := jids[i:end]
 
-		// Query pivot table for this batch
-		rows, err := pkgWhatsApp.Db.Query(`
+		// Build the PostgreSQL placeholders: $1, $2, ...
+		placeholders := make([]string, len(batch))
+		args := make([]interface{}, len(batch))
+		for i, jid := range batch {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = jid
+		}
+
+		query := fmt.Sprintf(`
 			SELECT p.jid, p.token, c.webhook_url, c.status_code, c.id AS client_id
-    		FROM whatsmeow_device_client_pivot p
-    		INNER JOIN whatsmeow_clients c ON p.client_id = c.id
-    		WHERE p.jid IN (`+strings.Repeat("?,", len(batch)-1)+`?)
-    		AND c.status_code = 1`,
-			convertToInterfaceSlice(batch)...,
-		)
+			FROM whatsmeow_device_client_pivot p
+			INNER JOIN whatsmeow_clients c ON p.client_id = c.id
+			WHERE p.jid IN (%s)
+			AND c.status_code = 1`, strings.Join(placeholders, ","))
+
+		rows, err := pkgWhatsApp.Db.Query(query, args...)
 		if err != nil {
 			log.Print(nil).Error("Failed to query pivot table: " + err.Error())
 			continue
 		}
 
-		defer func(rows *sql.Rows) {
-			err := rows.Close()
-			if err != nil {
+		func() {
+			defer rows.Close()
 
+			for rows.Next() {
+				var user pkgWhatsApp.WhatsAppTenantUser
+				var jid, webhookURL sql.NullString
+
+				if err := rows.Scan(&jid, &user.UserToken, &webhookURL, &user.StatusCode, &user.ClientId); err != nil {
+					log.Print(nil).Error("Failed to scan pivot row: " + err.Error())
+					continue
+				}
+
+				if jid.Valid {
+					user.JID = jid.String
+				}
+				if webhookURL.Valid {
+					user.WebhookURL = webhookURL.String
+				}
+
+				jidTokenMap[user.JID] = &user
 			}
-		}(rows)
-
-		for rows.Next() {
-			var user pkgWhatsApp.WhatsAppTenantUser
-			var jid, webhookURL sql.NullString
-
-			if err := rows.Scan(&jid,
-				&user.UserToken,
-				&webhookURL, &user.StatusCode, &user.ClientId); err != nil {
-				log.Print(nil).Error("Failed to scan pivot row: " + err.Error())
-				continue
-			}
-
-			// Handle nullable fields
-			if jid.Valid {
-				user.JID = jid.String
-			}
-
-			if webhookURL.Valid {
-				user.WebhookURL = webhookURL.String
-			}
-
-			jidTokenMap[user.JID] = &user
-		}
+		}()
 	}
 
 	return jidTokenMap
