@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 	"go.mau.fi/whatsmeow/types/events"
+	waLog "go.mau.fi/whatsmeow/util/log"
 	"io"
 	"net/http"
 	"net/url"
@@ -128,7 +129,7 @@ func WhatsAppInitClient(device *store.Device, user *WhatsAppTenantUser) {
 		// Initialize New WhatsApp Client
 		// And Save it to The Map
 		var wc WhatsAppTenantClient
-		wc.Conn = whatsmeow.NewClient(device, nil)
+		wc.Conn = whatsmeow.NewClient(device, waLog.Noop)
 		wc.User = user
 
 		WhatsAppActiveTenantClient[user.UserToken] = &wc
@@ -177,21 +178,17 @@ func handleLoggedOutEvent(user *WhatsAppTenantUser) {
 	if WhatsAppActiveTenantClient[user.UserToken] != nil {
 		err := WhatsAppLogout(user)
 		if err != nil {
-			log.Print(nil).Info("logout failed UUID: " + err.Error())
 		}
-
 		if WhatsAppActiveTenantClient[user.UserToken] != nil {
 			delete(WhatsAppActiveTenantClient, user.UserToken)
 		}
 	}
 
-	log.Print(nil).Info(WhatsAppActiveTenantClient)
-
 	err := removeByUUID(user)
 	if err != nil {
-		log.Print(nil).Info("logout failed UUID: " + err.Error())
+		log.Print(nil).Info("logout db failed UUID remove: " + err.Error())
 	}
-	
+
 	sendWebhookEvent("LOGGED_OUT", tmpUser)
 }
 
@@ -277,21 +274,32 @@ func WhatsAppLogin(user *WhatsAppTenantUser) (string, int, error) {
 		WhatsAppActiveTenantClient[user.UserToken].Conn.Disconnect()
 
 		if WhatsAppActiveTenantClient[user.UserToken].Conn.Store.ID == nil {
-			// Device ID is not Exist
-			// Generate QR Code
-			qrChanGenerate, _ := WhatsAppActiveTenantClient[user.UserToken].Conn.GetQRChannel(context.Background())
 
-			// Connect WebSocket while Initialize QR Code Data to be Sent
-			err := WhatsAppActiveTenantClient[user.UserToken].Conn.Connect()
-			if err != nil {
-				return "", 0, err
+			// Clean history
+			delete(WhatsAppActiveTenantClient, user.UserToken)
+			WhatsAppInitClient(nil, user)
+
+			if WhatsAppActiveTenantClient[user.UserToken] != nil {
+
+				// Device ID is not Exist
+				// Generate QR Code
+				qrChanGenerate, _ := WhatsAppActiveTenantClient[user.UserToken].Conn.GetQRChannel(context.Background())
+
+				// Connect WebSocket while Initialize QR Code Data to be Sent
+				err := WhatsAppActiveTenantClient[user.UserToken].Conn.Connect()
+				if err != nil {
+					return "", 0, err
+				}
+
+				// Get Generated QR Code and Timeout Information
+				qrImage, qrTimeout := WhatsAppGenerateQR(qrChanGenerate)
+
+				// Return QR Code in Base64 Format and Timeout Information
+				return "data:image/png;base64," + qrImage, qrTimeout, nil
 			}
 
-			// Get Generated QR Code and Timeout Information
-			qrImage, qrTimeout := WhatsAppGenerateQR(qrChanGenerate)
+			return "", 0, errors.New("Please try again")
 
-			// Return QR Code in Base64 Format and Timeout Information
-			return "data:image/png;base64," + qrImage, qrTimeout, nil
 		} else {
 			// Device ID is Exist
 			// Reconnect WebSocket
