@@ -268,8 +268,3 @@ func (c *Container) DeleteDevice(store *store.Device) error {
 	_, err := c.db.Exec(deleteDeviceQuery, store.ID.String())
 	return err
 }
-
-// GetDB returns the underlying *sql.DB instance used by the Container
-func (c *Container) GetDB() *sql.DB {
-	return c.db
-}

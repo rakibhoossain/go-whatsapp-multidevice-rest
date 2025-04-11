@@ -32,7 +32,7 @@ func BasicAuth() echo.MiddlewareFunc {
 			// But We Should Decode it First From Base64 Encoding
 			authPayload, err := base64.StdEncoding.DecodeString(authHeader[1])
 			if err != nil {
-				return router.ResponseInternalError(c, "")
+				return router.ResponseBadRequest(c, "")
 			}
 
 			// Split Decoded Authorization Payload Into Username and Password Credentials
@@ -84,7 +84,7 @@ func BasicAdminAuth() echo.MiddlewareFunc {
 			// But We Should Decode it First From Base64 Encoding
 			authPayload, err := base64.StdEncoding.DecodeString(authHeader[1])
 			if err != nil {
-				return router.ResponseInternalError(c, "")
+				return router.ResponseBadRequest(c, "")
 			}
 
 			// Split Decoded Authorization Payload Into Username and Password Credentials

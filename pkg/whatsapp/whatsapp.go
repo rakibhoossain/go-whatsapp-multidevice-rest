@@ -77,16 +77,25 @@ func init() {
 		log.Print(nil).Fatal("Error Parse Environment Variable for WhatsApp Client Datastore URI")
 	}
 
-	datastore, err := sqlstore.New(dbType, dbURI, nil)
+	db, err := sql.Open(dbType, dbURI)
 	if err != nil {
-		log.Print(nil).Fatal(err)
-		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
+		log.Print(nil).Fatal(fmt.Sprintf("Error Connect WhatsApp Client Datastore: %w", err))
+	}
+
+	container := sqlstore.NewWithDB(db, dbType, nil)
+	err = container.Upgrade()
+	if err != nil {
+		log.Print(nil).Fatal(fmt.Sprintf("failed to upgrade database: %w", err))
 	}
 
 	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
+	WhatsAppDatastore = container
+	Db = db
 
-	WhatsAppDatastore = datastore
-	Db = datastore.GetDB()
+	err = updateDatabase()
+	if err != nil {
+		log.Print(nil).Fatal(fmt.Sprintf("Failed to migrate db tables: %w", err))
+	}
 }
 
 func WhatsAppInitClient(device *store.Device, user *WhatsAppTenantUser) {
@@ -1441,7 +1450,7 @@ func WhatsAppGroupLeave(user *WhatsAppTenantUser, gjid string) error {
 	return errors.New("WhatsApp Client is not Valid")
 }
 
-func initDB() error {
+func updateDatabase() error {
 	var err error
 
 	_, err = Db.Exec(`
@@ -1469,11 +1478,7 @@ func initDB() error {
 		);
 	`)
 
-	if err != nil {
-		return fmt.Errorf("error creating table: %w", err)
-	}
-
-	return nil
+	return err
 }
 
 func saveUUID(jid types.JID, user *WhatsAppTenantUser) error {
@@ -1528,7 +1533,7 @@ func CreateClient(c echo.Context) error {
 
 	if err != nil {
 		fmt.Println(err)
-		return router.ResponseInternalError(c, "Failed to create client")
+		return router.ResponseBadRequest(c, "Failed to create client")
 	}
 
 	// Prepare response data
@@ -1617,7 +1622,7 @@ func ClientStatus(c echo.Context) error {
 		if err == sql.ErrNoRows {
 			return router.ResponseNotFound(c, "Client not found")
 		}
-		return router.ResponseInternalError(c, "Failed to get client status")
+		return router.ResponseBadRequest(c, "Failed to get client status")
 	}
 
 	return router.ResponseSuccessWithData(c, "Client status retrieved", response)
@@ -1659,13 +1664,13 @@ func ClientStatusEdit(c echo.Context) error {
 		uuid,
 	)
 	if err != nil {
-		return router.ResponseInternalError(c, "Failed to update client status")
+		return router.ResponseBadRequest(c, "Failed to update client status")
 	}
 
 	// Check if client was found
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return router.ResponseInternalError(c, "Failed to verify update")
+		return router.ResponseBadRequest(c, "Failed to verify update")
 	}
 
 	if rowsAffected == 0 {
@@ -1682,7 +1687,7 @@ func ClientDelete(c echo.Context) error {
 
 	tx, err := Db.Begin()
 	if err != nil {
-		return router.ResponseInternalError(c, "Failed to start transaction")
+		return router.ResponseBadRequest(c, "Failed to start transaction")
 	}
 
 	// Delete client (ON DELETE CASCADE will handle related pivot rows)
@@ -1698,11 +1703,11 @@ func ClientDelete(c echo.Context) error {
 		return router.ResponseNotFound(c, "Client not found")
 	} else if err != nil {
 		tx.Rollback()
-		return router.ResponseInternalError(c, "Failed to delete client")
+		return router.ResponseBadRequest(c, "Failed to delete client")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return router.ResponseInternalError(c, "Failed to complete deletion")
+		return router.ResponseBadRequest(c, "Failed to complete deletion")
 	}
 
 	return router.ResponseSuccess(c, "Client deleted successfully")
