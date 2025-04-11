@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-SERVICE_NAME="${SERVICE_NAME:-myapp}" # Default service name if not set
+SERVICE_NAME="${SERVICE_NAME:-whatsapp_web}" # Default service name if not set
 BUILD_CGO_ENABLED="${BUILD_CGO_ENABLED:-0}" # Default CGO disabled if not set
 
 # Define target platforms (OS/ARCH/extension)

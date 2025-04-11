@@ -79,22 +79,14 @@ func init() {
 
 	datastore, err := sqlstore.New(dbType, dbURI, nil)
 	if err != nil {
+		log.Print(nil).Fatal(err)
 		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
-	}
-
-	Db, err = sql.Open(dbType, dbURI)
-	if err != nil {
-		log.Print(nil).Fatal("Error Connect WhatsApp Client Datastore")
-	}
-
-	err = initDB()
-	if err != nil {
-		return
 	}
 
 	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
 
 	WhatsAppDatastore = datastore
+	Db = datastore.GetDB()
 }
 
 func WhatsAppInitClient(device *store.Device, user *WhatsAppTenantUser) {
