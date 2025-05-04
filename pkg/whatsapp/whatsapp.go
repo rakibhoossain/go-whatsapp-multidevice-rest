@@ -9,10 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
-	"go.mau.fi/whatsmeow/types/events"
-	waLog "go.mau.fi/whatsmeow/util/log"
 	"io"
 	"net/http"
 	"net/url"
@@ -20,6 +16,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
+	"go.mau.fi/whatsmeow/types/events"
+	waLog "go.mau.fi/whatsmeow/util/log"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/forPelevin/gomoji"
@@ -156,6 +157,16 @@ func createEventHandler(user *WhatsAppTenantUser) func(interface{}) {
 			handlePairedEvent(user, v)
 		case *events.LoggedOut:
 			handleLoggedOutEvent(user)
+		case *events.Message:
+			handleIncomingMessage(user, v)
+		case *events.Connected:
+			handleConnectionEvent(user, true)
+		case *events.Disconnected:
+			handleConnectionEvent(user, false)
+		case *events.PairError:
+			handlePairErrorEvent(user, v)
+		case *events.HistorySync:
+			handleHistorySyncEvent(user, v)
 		}
 	}
 }
@@ -191,6 +202,62 @@ func handleLoggedOutEvent(user *WhatsAppTenantUser) {
 	}
 
 	sendWebhookEvent("LOGGED_OUT", tmpUser)
+}
+
+func handleIncomingMessage(user *WhatsAppTenantUser, msg *events.Message) {
+
+	fmt.Println("Received a message!", msg.Message.GetConversation())
+
+	content := msg.Message.GetConversation()
+	if content == "" {
+		if msg.Message.ExtendedTextMessage != nil {
+			content = msg.Message.ExtendedTextMessage.GetText()
+		}
+	}
+
+	log.Print(nil).Info(fmt.Sprintf("%v", msg))
+
+	log.Print(nil).Info("Store JID failed: " + user.UserToken)
+
+	// err := saveUUID(evt.ID, user)
+	// if err != nil {
+	// 	log.Print(nil).Info("Store JID failed: " + user.UserToken)
+	// 	return
+	// }
+
+	// sendWebhookEvent("PAIR_SUCCESS", *user)
+}
+
+func handleConnectionEvent(user *WhatsAppTenantUser, connected bool) {
+
+	log.Print(nil).Info(fmt.Sprintf("Store JID connection: %v Status: %v", user.UserToken, connected))
+
+	// err := saveUUID(evt.ID, user)
+	// if err != nil {
+	// 	log.Print(nil).Info("Store JID failed: " + user.UserToken)
+	// 	return
+	// }
+
+	// status := "CONNECTED"
+	// if connected {
+	// 	status = "DISCONNECTED"
+	// }
+
+	// sendWebhookEvent(status, *user)
+}
+
+func handlePairErrorEvent(user *WhatsAppTenantUser, evt *events.PairError) {
+	err := saveUUID(evt.ID, user)
+	if err != nil {
+		log.Print(nil).Info("Store JID failed: " + user.UserToken)
+		return
+	}
+
+	sendWebhookEvent("PAIR_ERROR", *user)
+}
+
+func handleHistorySyncEvent(user *WhatsAppTenantUser, evt *events.HistorySync) {
+	log.Print(nil).Info(fmt.Sprintf("HistorySync: %v Status: %v", user.UserToken, evt))
 }
 
 func WhatsAppGetUserAgent(agentType string) waCompanionReg.DeviceProps_PlatformType {
