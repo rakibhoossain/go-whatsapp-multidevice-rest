@@ -31,6 +31,7 @@ import (
 	qrCode "github.com/skip2/go-qrcode"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/gorilla/websocket"
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/env"
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/log"
 	"go.mau.fi/whatsmeow"
@@ -54,6 +55,9 @@ type WhatsAppTenantUser struct {
 type WhatsAppTenantClient struct {
 	Conn *whatsmeow.Client   // Explicitly named connection
 	User *WhatsAppTenantUser // User data
+
+	WsConn *websocket.Conn // WebSocket connection (added)
+	Send   chan []byte     // Channel for sending messages
 }
 
 var WhatsAppDatastore *sqlstore.Container
@@ -64,6 +68,12 @@ var Db *sql.DB
 var (
 	WhatsAppClientProxyURL string
 )
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins (you may restrict this in production)
+	},
+}
 
 func init() {
 	var err error
@@ -258,6 +268,31 @@ func handlePairErrorEvent(user *WhatsAppTenantUser, evt *events.PairError) {
 
 func handleHistorySyncEvent(user *WhatsAppTenantUser, evt *events.HistorySync) {
 	log.Print(nil).Info(fmt.Sprintf("HistorySync: %v Status: %v", user.UserToken, evt))
+}
+
+func WebsocketConnect(c echo.Context, user *WhatsAppTenantUser) (string, error) {
+	if WhatsAppActiveTenantClient[user.UserToken] == nil {
+		return "", errors.New("Device not connected")
+	}
+
+	var err error
+
+	// Make Sure WhatsApp Client is OK
+	err = WhatsAppIsClientOK(user)
+	if err != nil {
+		return "", err
+	}
+
+	conn, err := upgrader.Upgrade(c.Response().Writer, c.Request(), nil)
+	if err != nil {
+		fmt.Println("WebSocket upgrade error:", err)
+		return "", err
+	}
+
+	WhatsAppActiveTenantClient[user.UserToken].Send = make(chan []byte)
+	WhatsAppActiveTenantClient[user.UserToken].WsConn = conn
+
+	return "", nil
 }
 
 func WhatsAppGetUserAgent(agentType string) waCompanionReg.DeviceProps_PlatformType {

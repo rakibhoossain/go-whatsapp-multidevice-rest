@@ -3,11 +3,12 @@ package whatsapp
 import (
 	"bytes"
 	"errors"
-	"github.com/labstack/echo/v4"
 	"io"
 	"mime/multipart"
 	"strconv"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
 	pkgWhatsApp "github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/whatsapp"
@@ -61,6 +62,23 @@ func ClientStatusEdit(c echo.Context) error {
 
 func ClientDelete(c echo.Context) error {
 	return pkgWhatsApp.ClientDelete(c)
+}
+
+func WebsocketConnect(c echo.Context) error {
+
+	var err error
+
+	auth, err := authPayload(c)
+	if err != nil {
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	_, err = pkgWhatsApp.WebsocketConnect(c, auth.User)
+	if err != nil {
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	return nil
 }
 
 // Login

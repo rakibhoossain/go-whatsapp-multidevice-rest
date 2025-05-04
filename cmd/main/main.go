@@ -62,7 +62,15 @@ func main() {
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: router.GZipLevel,
 		Skipper: func(c echo.Context) bool {
+			if strings.Contains(strings.ToLower(c.Request().Header.Get("Connection")), "upgrade") {
+				return true
+			}
+
 			if strings.Contains(c.Request().URL.Path, "docs") {
+				return true
+			}
+
+			if strings.Contains(c.Request().URL.Path, "ws") {
 				return true
 			}
 

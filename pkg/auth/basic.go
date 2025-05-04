@@ -67,6 +67,48 @@ func BasicAuth() echo.MiddlewareFunc {
 	}
 }
 
+func WebsocketAuth() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+
+			uuid := c.QueryParam("apiKey")
+			if uuid == "" {
+				return router.ResponseBadRequest(c, "required api key")
+			}
+
+			username := c.QueryParam("username")
+			if username == "" {
+				return router.ResponseBadRequest(c, "required username")
+			}
+
+			password := c.QueryParam("password")
+			if password == "" {
+				return router.ResponseBadRequest(c, "required password")
+			}
+
+			// Check HTTP Header Authorization Section
+			if len(username) < 2 || len(password) < 2 {
+				return router.ResponseAuthenticate(c)
+			}
+
+			user, err := pkgWhatsApp.GetWhatsAppUserWithToken(uuid, username, password)
+			if err != nil {
+				return router.ResponseBadRequest(c, err.Error())
+			}
+
+			if user == nil {
+				return router.ResponseBadRequest(c, "Bad user")
+			}
+
+			// Store the username in the context instead of modifying the body
+			c.Set("User", user)
+
+			// Call Next Handler Function With Current Request
+			return next(c)
+		}
+	}
+}
+
 func BasicAdminAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

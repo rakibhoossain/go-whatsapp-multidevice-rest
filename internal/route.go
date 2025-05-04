@@ -37,6 +37,8 @@ func Routes(e *echo.Echo) {
 	e.POST(router.BaseURL+"/logout", ctlWhatsApp.Logout, auth.BasicAuth())
 	e.GET(router.BaseURL+"/status", ctlWhatsApp.Status, auth.BasicAuth())
 
+	e.GET(router.BaseURL+"/ws", ctlWhatsApp.WebsocketConnect, auth.WebsocketAuth())
+
 	e.GET(router.BaseURL+"/registered", ctlWhatsApp.Registered, auth.BasicAuth())
 
 	e.GET(router.BaseURL+"/group", ctlWhatsApp.GetGroup, auth.BasicAuth())
