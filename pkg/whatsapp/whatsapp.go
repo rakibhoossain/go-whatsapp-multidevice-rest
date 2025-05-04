@@ -235,7 +235,7 @@ func handleIncomingMessage(user *WhatsAppTenantUser, msg *events.Message) {
 	// 	return
 	// }
 
-	// sendWebhookEvent("PAIR_SUCCESS", *user)
+	sendWebhookEvent("INCOMMING_MESSAGE", *user)
 }
 
 func handleConnectionEvent(user *WhatsAppTenantUser, connected bool) {
@@ -248,12 +248,12 @@ func handleConnectionEvent(user *WhatsAppTenantUser, connected bool) {
 	// 	return
 	// }
 
-	// status := "CONNECTED"
-	// if connected {
-	// 	status = "DISCONNECTED"
-	// }
+	status := "CONNECTED"
+	if connected {
+		status = "DISCONNECTED"
+	}
 
-	// sendWebhookEvent(status, *user)
+	sendWebhookEvent(status, *user)
 }
 
 func handlePairErrorEvent(user *WhatsAppTenantUser, evt *events.PairError) {
@@ -1912,6 +1912,9 @@ func IsValidHTTPSURL(urlString string) bool {
 
 // Webhook sender function
 func sendWebhookEvent(eventType string, user WhatsAppTenantUser) {
+
+	sendWebsocketEvent(eventType, user)
+
 	if user.WebhookURL != "" && IsValidHTTPSURL(user.WebhookURL) {
 
 		payload := map[string]interface{}{
@@ -1943,5 +1946,20 @@ func sendWebhookEvent(eventType string, user WhatsAppTenantUser) {
 			log.Print(nil).Info(fmt.Sprintf("webhook returned status %d", resp.StatusCode))
 		}
 
+	}
+}
+
+func sendWebsocketEvent(eventType string, user WhatsAppTenantUser) {
+	if WhatsAppActiveTenantClient[user.UserToken] != nil {
+
+		fmt.Println(WhatsAppActiveTenantClient[user.UserToken].WsConn)
+
+		if WhatsAppActiveTenantClient[user.UserToken].WsConn != nil {
+			msg := "Hello from Go server at " + time.Now().Format(time.RFC3339) + " Event: " + eventType
+			err := WhatsAppActiveTenantClient[user.UserToken].WsConn.WriteMessage(websocket.TextMessage, []byte(msg))
+			if err != nil {
+				fmt.Println("Write error:", err)
+			}
+		}
 	}
 }
