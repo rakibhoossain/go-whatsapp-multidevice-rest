@@ -317,6 +317,11 @@ paths:
         name: document
         required: true
         type: file
+      - description: Document Caption Message
+        in: formData
+        name: caption
+        required: true
+        type: string
       produces:
       - application/json
       responses:

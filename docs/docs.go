@@ -518,6 +518,13 @@ const docTemplate = `{
                         "name": "document",
                         "in": "formData",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Document Caption Message",
+                        "name": "caption",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
