@@ -9,10 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
-	"go.mau.fi/whatsmeow/types/events"
-	waLog "go.mau.fi/whatsmeow/util/log"
 	"io"
 	"net/http"
 	"net/url"
@@ -20,6 +16,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/rakibhoossain/go-whatsapp-multidevice-rest/pkg/router"
+	"go.mau.fi/whatsmeow/types/events"
+	waLog "go.mau.fi/whatsmeow/util/log"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/forPelevin/gomoji"
@@ -657,7 +658,7 @@ func WhatsAppSendLocation(ctx context.Context, user *WhatsAppTenantUser, rjid st
 	return "", errors.New("WhatsApp Client is not Valid")
 }
 
-func WhatsAppSendDocument(ctx context.Context, user *WhatsAppTenantUser, rjid string, fileBytes []byte, fileType string, fileName string) (string, error) {
+func WhatsAppSendDocument(ctx context.Context, user *WhatsAppTenantUser, rjid string, fileBytes []byte, fileType string, fileName string, caption string) (string, error) {
 	if WhatsAppActiveTenantClient[user.UserToken] != nil {
 		var err error
 
@@ -698,6 +699,7 @@ func WhatsAppSendDocument(ctx context.Context, user *WhatsAppTenantUser, rjid st
 				Mimetype:      proto.String(fileType),
 				Title:         proto.String(fileName),
 				FileName:      proto.String(fileName),
+				Caption:       proto.String(caption),
 				FileLength:    proto.Uint64(fileUploaded.FileLength),
 				FileSHA256:    fileUploaded.FileSHA256,
 				FileEncSHA256: fileUploaded.FileEncSHA256,
