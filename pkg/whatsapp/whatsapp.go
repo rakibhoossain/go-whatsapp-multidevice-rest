@@ -759,7 +759,7 @@ func WhatsAppSendLocation(ctx context.Context, user *WhatsAppTenantUser, rjid st
 	return "", errors.New("WhatsApp Client is not Valid")
 }
 
-func WhatsAppSendDocument(ctx context.Context, user *WhatsAppTenantUser, rjid string, fileBytes []byte, fileType string, fileName string) (string, error) {
+func WhatsAppSendDocument(ctx context.Context, user *WhatsAppTenantUser, rjid string, fileBytes []byte, fileType string, fileName string, caption string) (string, error) {
 	if WhatsAppActiveTenantClient[user.UserToken] != nil {
 		var err error
 
@@ -800,6 +800,7 @@ func WhatsAppSendDocument(ctx context.Context, user *WhatsAppTenantUser, rjid st
 				Mimetype:      proto.String(fileType),
 				Title:         proto.String(fileName),
 				FileName:      proto.String(fileName),
+				Caption:       proto.String(caption),
 				FileLength:    proto.Uint64(fileUploaded.FileLength),
 				FileSHA256:    fileUploaded.FileSHA256,
 				FileEncSHA256: fileUploaded.FileEncSHA256,

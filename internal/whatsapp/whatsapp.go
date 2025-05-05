@@ -609,11 +609,13 @@ func sendMedia(c echo.Context, mediaType string) error {
 	// Read Uploaded File Based on Send Media Type
 	var fileStream multipart.File
 	var fileHeader *multipart.FileHeader
+	var fileName string
 
 	switch mediaType {
 	case "document":
 		fileStream, fileHeader, err = c.Request().FormFile("document")
-		reqSendMessage.Message = fileHeader.Filename
+		fileName = fileHeader.Filename
+		reqSendMessage.Message = strings.TrimSpace(c.FormValue("caption"))
 
 	case "image":
 		fileStream, fileHeader, err = c.Request().FormFile("image")
@@ -678,7 +680,7 @@ func sendMedia(c echo.Context, mediaType string) error {
 	var resSendMessage typWhatsApp.ResponseSendMessage
 	switch mediaType {
 	case "document":
-		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendDocument(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message)
+		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendDocument(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType, fileName, reqSendMessage.Message)
 
 	case "image":
 		resSendMessage.MsgID, err = pkgWhatsApp.WhatsAppSendImage(ctx, auth.User, reqSendMessage.RJID, fileBytes, fileType, reqSendMessage.Message, reqSendMessage.ViewOnce)
